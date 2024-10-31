@@ -1,0 +1,35 @@
+#ignore thumbnails created by windows
+Thumbs.db
+
+# binaries and backup files
+*.exe
+*.lib
+*.bak
+
+# Apsim generated outputs and log
+*.sum
+*.out
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# R Studio and session Data files
+.Rproj.user/
+.Rproj.user
+.RData
+
+# output files from R CMD (build/check)
+/*.tar.gz
+/*.Rcheck/
+.Rhistory
+.Rapp.history
+
+# knitr and R markdown default cache directories and temp files
+/*_cache/
+/cache/
+*.utf8.md
+*.knit.md
+
+# Other miscellaneous
+*.tmp
