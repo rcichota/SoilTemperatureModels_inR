@@ -1,0 +1,13 @@
+Soil parameters per layer - example of data (BD: bulk density, LLC: lower limit, DUL: upper limit, SAT: saturation, OC: carbon, SVSH: volumetric specific heat)
+()          ()      (mm)      (mm)       (mm)      (%)     (%)  (g/cm3)   (m3/m3)  (m3/m3)  (m3/m3)      (%) (MJ/m3/oC)
+SoilName   SID  LayerTop  LayerBot  Thickness     Clay    Sand       BD       LLC      DUL      SAT       OC      SVSH
+SiltLoam     1        00        50         50     20.0    30.0     1.11     0.210    0.355    0.500     2.75      2.35
+SiltLoam     2        50       150        100     20.0    30.0     1.15     0.200    0.350    0.490     1.52      2.37
+SiltLoam     3       150       300        150     20.0    32.5     1.20     0.190    0.350    0.475     1.06      2.39
+SiltLoam     4       300       450        150     20.0    35.0     1.25     0.200    0.355    0.475     0.65      2.40
+SiltLoam     5       450       600        150     20.0    35.0     1.25     0.210    0.360    0.470     0.41      2.40
+SiltLoam     6       600       750        150     22.5    35.0     1.23     0.220    0.370    0.460     0.23      2.40
+SiltLoam     7       750      1000        250     25.0    35.0     1.21     0.220    0.375    0.455     0.15      2.39
+SiltLoam     8      1000      1250        250     25.0    35.0     1.20     0.220    0.375    0.450     0.13      2.38
+SiltLoam     9      1250      1500        250     25.0    35.0     1.20     0.220    0.375    0.450     0.11      2.38
+SiltLoam    10      1500      1800        300     25.0    35.0     1.20     0.220    0.375    0.450     0.10      2.38
