@@ -1,7 +1,8 @@
 library(gsubfn)
 library (gsubfn) 
-setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/DSSAT_ST_standalone/src/r')
-source('Stemp.r')
+#setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/DSSAT_ST_standalone/src/r')
+#source('Stemp.r')
+source(file.path(dirname(sys.frame(1)$ofile), "stemp.r"))
 
 model_stemp_ <- function (TMAX,
          MSALB,
