@@ -1,9 +1,12 @@
 library(gsubfn)
-library (gsubfn) 
-setwd('/src/r')
-source('Soiltemperature.r')
-source('Nosnowsoilsurfacetemperature.r')
-source('Withsnowsoilsurfacetemperature.r')
+#library (gsubfn) 
+#setwd('/src/r')
+#source('Soiltemperature.r')
+#source('Nosnowsoilsurfacetemperature.r')
+#source('Withsnowsoilsurfacetemperature.r')
+source(file.path(dirname(sys.frame(1)$ofile), "soiltemperature.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "nosnowsoilsurfacetemperature.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "withsnowsoilsurfacetemperature.r"))
 
 model_soiltemperaturecomp <- function (tmin,
          tmax,
