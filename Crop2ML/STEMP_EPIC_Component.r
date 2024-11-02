@@ -2,6 +2,7 @@ library(gsubfn)
 #library (gsubfn) 
 #setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/DSSAT_EPICST_standalone/src/r')
 #source('Stemp_epic.r')
+source(file.path(dirname(sys.frame(1)$ofile), "stemp_epic.r"))
 
 model_stemp_epic_ <- function (BD,
          RAIN,
