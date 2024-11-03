@@ -11,6 +11,9 @@
 #'              concentrations (e.g. amount of nitrogen per unit of soil mass in each layer, in kg/kg). These have to
 #'              be treated differently to map them correctly (ensure mass balance is maintained). Which is why there
 #'              are two mapping functions here, one for each case; plus one to eventually interpolate the values.
+#'              Note that if the sum of thicknesses (total soil depth) in the new structure is different than the one
+#'              in the original layering, the values are truncated (if new soil depth is smaller than the original)
+#'              or the value of the last layer is repeated (as concentration) to fill in the values needed.
 #'
 #' @param fromValues array with the values for the thickness of each layer in the original structure
 #' @param fromThickness array with the original values of the variable to be re-mapped
@@ -23,8 +26,7 @@
 #' originalSoilWater <- c(25, 60, 90, 175)
 #' newSoilThickness <- c(50, 50, 50, 50, 100, 100, 100, 100, 100, 100, 100, 100)
 #' newSoilWater <-  MapAmountsByLayer(originalSoilWater, originalSoilThickness, newSoilThickness)
-#'
-#' should return:
+#'  this should return:
 #' newSoilWater => c(25, 20, 20, 20, 30, 30, 30, 35, 35, 35, 35, 35)
 #'
 #' @export
@@ -40,6 +42,9 @@ MapAmountsByLayer <- function(fromValues, fromThickness, toThickness)
   {
     cumFromThickness <- c(cumFromThickness, cumFromThickness[z-1]+fromThickness[z])
     cumFromValues <- c(cumFromValues, cumFromValues[z-1]+fromValues[z])
+    # working with cumulative values ensure that a simple linear interpolation is enough
+    #  to get the value at any depth. To estimate value by layer, one needs to get the
+    #  cumulative values at the beginning and the end of 'new' layer and subtract them...
   }
 
   # interpolate new values
@@ -67,13 +72,13 @@ MapAmountsByLayer <- function(fromValues, fromThickness, toThickness)
 
 MapConcentrationByLayer <- function(fromValues, fromThickness, toThickness)
 {
-  # convert value from concentration to amounts
+  # convert values from concentration to amounts
   baseValues <- fromValues*fromThickness
   
-  # re-map values to new thickness  
-  newValues = MapMass(baseValues, fromThickness, toThickness);
+  # re-map amount values to new thickness  
+  newValues = MapAmountsByLayer(baseValues, fromThickness, toThickness);
   
-  # convert amounts back to concentration
+  # convert new amounts into concentration
   return(newValues/toThickness)
 }
 
@@ -83,9 +88,13 @@ linearInterpolation <- function(givenX, xValsArray, yValsArray)
 {
   # find where x lies in the x array
   pos <- which.min(replace(xValsArray - givenX, (xValsArray - givenX) < 0, NA))
+  if (identical(pos, integer(0)))
+  {  # empty index returned (passed the array length), use last value
+    pos <- length(xValsArray)
+  }
 
   # find the matching y (interpolated)
-  if (pos==1)  # first element, antecedent value is assumed zero
+  if (pos==1)  # first element, 0th value is assumed zero
   {
     newY  <- givenX * yValsArray[pos] / xValsArray[pos]
   } else
