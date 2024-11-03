@@ -1,0 +1,238 @@
+---
+title: "Run_Crop2ML_MONICA_SoilTemp"
+author: "RCichota"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# Running a soil temperature model from Crop2ML in R - MONICA
+
+This is part of a series to demonstrate how to run in R environment a soil temperature model generated using Crop2ML.
+
+Crop2ML (Crop Modelling Meta Language) is a framework to translate components from and to specific modeling platforms. It provides a solution that can generate components automatically, based on a metalanguage, to simulate particular soil and/or plant processes. The framework was proposed by the Agricultural Model Exchange Initiative (AMEI) to facilitate the exchange and reuse of model components between different process-based modeling platforms used in agricultural and environmental research. More info at: https://crop2ml.org
+
+A version of the soil temperature model from the MONICA platform (http://monica.agrosystem-models.com) was converted into R functions using Crop2ML (working version as of Oct/2024). The scripts below show how to use the model stand-alone in R. This is a simple demonstration on how to set up and run the model for a very simple example, as well as record and graph some results from this example. More elaborate exercises and coupling with other models are possible but not in scope here.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load some libraries
+library(here)
+library(gsubfn)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# load DSSAT native component
+source(here("Crop2ML", "SoilTemperatureCompComponent.r"))
+
+# load auxiliary functions
+source(here("auxiliary", "MapLayerValues.R"))
+
+```
+
+## Read in parameters and basic data
+
+The soil temperature requires a number of soil parameters and input data (weather). These are read in from test files.
+Note that some model specific parameters are set in here manually...
+
+```{r read files}
+
+# read general site info (weather and soil type summary)
+siteFilePath <- here("data", "SiteExample.dat")
+siteData <- read.table(siteFilePath, skip = 2, header = TRUE)
+
+# get the weather data (daily values)
+weatherFilePath <- here("data", "WeatherDataExample.dat")
+weatherData <- read.table(weatherFilePath, skip = 2, header = TRUE)
+
+# get soil profile data
+soilLayerFilePath <- here("data", "SoilLayersExample.dat")
+soilLayerData <- read.table(soilLayerFilePath, skip = 2, header = TRUE)
+
+```
+
+## Run the model over a number of dates
+
+Firstly the dates to start and end the period over which the simulation will run is defined, then the soil water content and some model specific variables/parameters. Finally the model is run (loop over the weather data)
+Here we are collecting a few variables of interest, putting in a data.frame with names and formats wanted (assumed), and then saving it to a file in the outputs folder.
+The example simulation runs over one year, the data collected consists of soil temperature for the various depths (as defined in soilLayerData) for each simulated date.
+
+Note that MONICA requires that the soil profile is divided in layers of a set thickness (50mm). Therefore, all the arrays of soil variables need to be re-mapped into this structure before running the model and then mapped back to the original layering.
+
+```{r run simulation}
+
+# set the dates between which the model will run over
+startDate <- "2000-01-01"
+endDate <- "2000-12-31"
+firstDay <- match(startDate, weatherData$date)
+lastDay <- match(endDate, weatherData$date)
+
+# define some variables specific to a given run/simulation
+fractionPAW <- 0.75
+currentSWC <- soilLayerData$LLC + (soilLayerData$DUL - soilLayerData$LLC)*fractionPAW
+
+baseTemp <- 9.5          # base temperature
+airDensity <- 1.25       # density of air (kg/m3)
+airSpecHeat <- 1005.0    # specific heat capacity of air (J/kg/K)
+humusDensity <- 1300.0   # density of humus (kg/m3)
+humusSpecHeat <- 1920.0  # specific heat capacity of humus (J/kg/K)
+waterDensity <- 1000.0   # density of water (kg/m3)
+waterSpecHeat <- 4192.0  # specific heat capacity of water (J/kg/K)
+quartzDensity <- 2650.0  # density of quartz mineral (kg/m3)
+quartzSpecHeat <- 750.0  # specific heat capacity of quartz (J/kg/K)
+n_Tau <- 0.65            # a parameter (?)
+time_step <- 1.0         # time-step for calculations (-?)
+iniSurfaceTemp <-  10.0  # initial surface temperature
+dampingFactr <- 0.8      # a factor ??
+currentLAI <- 0.0        # leaf area index, for computing cover
+soilCover <- 1.0 - exp(-0.5 * currentLAI)
+hasSnow <- FALSE         # flag whether there is snow in the ground
+
+# re-map soil profile to MONICA requirements
+monicaSoilThickness <- rep(50.0, 42)
+currentSWC <- MapConcentrationByLayer(currentSWC, soilLayerData$Thickness, monicaSoilThickness)
+monicaBD <- MapConcentrationByLayer(soilLayerData$BD*1000.0, soilLayerData$Thickness, monicaSoilThickness)
+monicaSAT <- MapConcentrationByLayer(soilLayerData$SAT, soilLayerData$Thickness, monicaSoilThickness)
+monicaOM <- MapConcentrationByLayer(soilLayerData$OC/0.57*100.0, soilLayerData$Thickness, monicaSoilThickness)
+monicaSoilThickness <- rep(0.05, 44)  # set values in m, add two extra layers, kept empty
+
+# create some variables to collect outputs of interest
+simulatedDate <- c()
+simulatedDepth <- c()
+simulatedTemperature <- c()
+
+# set model initialisation
+initialState <- init_soiltemperature(
+  noOfSoilLayers=length(monicaSoilThickness)-2,
+  noOfTempLayers=length(monicaSoilThickness),
+  noOfTempLayersPlus1=length(monicaSoilThickness)+1,
+  timeStep=time_step,
+  soilMoistureConst=currentSWC,
+  baseTemp=9.5,
+  initialSurfaceTemp=iniSurfaceTemp,
+  densityAir=airDensity,
+  specificHeatCapacityAir=airSpecHeat,
+  densityHumus=humusDensity,
+  specificHeatCapacityHumus=humusSpecHeat,
+  densityWater=waterDensity,
+  specificHeatCapacityWater=waterSpecHeat,
+  quartzRawDensity=quartzDensity,
+  specificHeatCapacityQuartz=quartzSpecHeat,
+  nTau=n_Tau,
+  layerThickness=monicaSoilThickness,
+  soilBulkDensity=monicaBD,
+  saturation=monicaSAT,
+  soilOrganicMatter=monicaOM)
+
+# collect some variables that are needed for next iteration
+base_V <- initialState$V
+base_B <- initialState$B
+base_volumeMatrix <- initialState$volumeMatrix
+base_volumeMatrixOld <- initialState$volumeMatrixOld
+base_matrixPrimaryDiagonal <- initialState$matrixPrimaryDiagonal
+base_matrixSecondaryDiagonal <- initialState$matrixSecondaryDiagonal
+base_heatConductivity <- initialState$heatConductivity
+base_heatConductivityMean <- initialState$heatConductivityMean
+base_heatCapacity <- initialState$heatCapacity
+base_solution <- initialState$solution
+base_matrixDiagonal <- initialState$matrixDiagonal
+base_matrixLowerTriangle <- initialState$matrixLowerTriangle
+base_heatFlow <- initialState$heatFlow
+previousSurfaceTemperature <- initialState$soilSurfaceTemperature
+previousSoilTemperature <- initialState$soilTemperature
+
+# run model between two days (dates in weather file)
+for (day in firstDay:lastDay)
+{
+  onProcessState <- model_soiltemperaturecomp(
+    tmin=weatherData$mint[day],
+    tmax=weatherData$maxt[day],
+    globrad=weatherData$radn[day],
+    dampingFactor=dampingFactr,
+    soilCoverage=soilCover,
+    soilSurfaceTemperatureBelowSnow=0,
+    hasSnowCover=hasSnow,
+    timeStep=time_step,
+    soilMoistureConst=currentSWC,
+    baseTemp=9.5,
+    initialSurfaceTemp=previousSurfaceTemperature,
+    densityAir=airDensity,
+    specificHeatCapacityAir=airSpecHeat,
+    densityHumus=humusDensity,
+    specificHeatCapacityHumus=humusSpecHeat,
+    densityWater=waterDensity,
+    specificHeatCapacityWater=waterSpecHeat,
+    quartzRawDensity=quartzDensity,
+    specificHeatCapacityQuartz=quartzSpecHeat,
+    nTau=n_Tau,
+    noOfTempLayers=length(monicaSoilThickness),
+    noOfTempLayersPlus1=length(monicaSoilThickness)+1,
+    noOfSoilLayers=length(monicaSoilThickness)-2,
+    layerThickness=monicaSoilThickness,
+    soilBulkDensity=monicaBD,
+    saturation=monicaSAT,
+    soilOrganicMatter=monicaOM,
+    initialSoilTemperature=previousSoilTemperature,
+    V=base_V,
+    B=base_B,
+    volumeMatrix=base_volumeMatrix,
+    volumeMatrixOld=base_volumeMatrixOld,
+    matrixPrimaryDiagonal=base_matrixPrimaryDiagonal,
+    matrixSecondaryDiagonal=base_matrixSecondaryDiagonal,
+    heatConductivity=base_heatConductivity,
+    heatConductivityMean=base_heatConductivityMean,
+    heatCapacity=base_heatCapacity,
+    solution=base_solution,
+    matrixDiagonal=base_matrixDiagonal,
+    matrixLowerTriangle=base_matrixLowerTriangle,
+    heatFlow=base_heatFlow)
+
+  # collect some variables that are needed for next iteration
+  previousSurfaceTemperature <- onProcessState$soilSurfaceTemperature
+  previousSoilTemperature <- onProcessState$soilTemperature
+
+  # collect output data
+  simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData) + 1))
+  simulatedDepth <- c(simulatedDepth, c(0.0, (soilLayerData$LayerTop+soilLayerData$LayerBot)/2))
+  unMonicaSoilTemperature <- MapConcentrationByLayer(onProcessState$soilTemperature, monicaSoilThickness,soilLayerData$Thickness)
+  simulatedTemperature <- c(simulatedTemperature, c(round(onProcessState$soilSurfaceTemperature, 6), round(unMonicaSoilTemperature, 6)))
+}
+
+# prepare the output table
+outputData <- data.frame(simulatedDate, simulatedDepth, simulatedTemperature)
+colnames(outputData) <- c("Date", "Depth", "Temperature")
+
+# save the outputs
+thisModel <- "MONICA"
+outputFileName <- paste0("OutputDataExample_", thisModel, ".csv")
+outputFilePath <- here("outputs", outputFileName)
+write.table(outputData, outputFilePath, sep=",", row.names=FALSE, quote=FALSE)
+
+```
+
+## Graph some results
+
+Using the data.frame created above (otherwise one has to read in the file saved), two graphs are created to check the model and demonstrate how the data can be presented. The first graph shows the time series of simulated temperature at three depths; the second graph shows the temperature simulated over the profile (all depth) for four dates along the year.
+
+```{r graphs}
+
+timeSeriesTemperature <- outputData %>%
+  filter(Depth==0 | Depth==100 | Depth==1125) %>%
+  mutate_at(vars(Depth), factor)
+
+ggplot(data=timeSeriesTemperature, aes(x=as.Date(Date), y=Temperature, color=Depth)) +
+  geom_line() +
+  labs(title = "Simulated temperature over time at different depths", y = "Temperature (oC)", x = "Date")
+
+
+profileTemperature <- outputData %>%
+  filter(Date == "2000-01-01" | Date == "2000-04-01" | Date == "2000-07-01" | Date == "2000-10-01")
+
+ggplot(data=profileTemperature, aes(x=Temperature, y=Depth, color=Date)) +
+  geom_path() +
+  scale_y_reverse() +
+  labs(title = "Simulated temperature profile at different dates", y = "Depth (mm)", x = "Temperature (oC)")
+
+```
