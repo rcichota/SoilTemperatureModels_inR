@@ -56,5 +56,6 @@ model_withsnowsoilsurfacetemperature <- function (noSnowSoilSurfaceTemperature,
     {
         soilSurfaceTemperature <- noSnowSoilSurfaceTemperature
     }
-    return (list('soilSurfaceTemperature' = soilSurfaceTemperature))
+  #return (list('soilSurfaceTemperature' = soilSurfaceTemperature))
+  return (soilSurfaceTemperature)
 }

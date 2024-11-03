@@ -35,6 +35,7 @@ model_soiltemperaturecomp <- function (tmin,
          soilBulkDensity,
          saturation,
          soilOrganicMatter,
+         initialSoilTemperature,
          V,
          B,
          volumeMatrix,
@@ -452,9 +453,11 @@ model_soiltemperaturecomp <- function (tmin,
     #'                          ** min : 
     #'                          ** unit : °C
     soilTemperature <- vector(,noOfTempLayers)
-    soilSurfaceTemperature <- model_nosnowsoilsurfacetemperature(tmin, tmax, globrad, soilCoverage, dampingFactor, soilSurfaceTemperature)
+    #soilSurfaceTemperature <- model_nosnowsoilsurfacetemperature(tmin, tmax, globrad, soilCoverage, dampingFactor, soilSurfaceTemperature)
+    soilSurfaceTemperature <- model_nosnowsoilsurfacetemperature(tmin, tmax, globrad, soilCoverage, dampingFactor, initialSurfaceTemp)
     noSnowSoilSurfaceTemperature <- soilSurfaceTemperature
     soilSurfaceTemperature <- model_withsnowsoilsurfacetemperature(noSnowSoilSurfaceTemperature, soilSurfaceTemperatureBelowSnow, hasSnowCover)
-    soilTemperature <- model_soiltemperature(noOfSoilLayers, noOfTempLayers, noOfTempLayersPlus1, soilSurfaceTemperature, timeStep, soilMoistureConst, baseTemp, initialSurfaceTemp, densityAir, specificHeatCapacityAir, densityHumus, specificHeatCapacityHumus, densityWater, specificHeatCapacityWater, quartzRawDensity, specificHeatCapacityQuartz, nTau, layerThickness, soilBulkDensity, saturation, soilOrganicMatter, soilTemperature, V, B, volumeMatrix, volumeMatrixOld, matrixPrimaryDiagonal, matrixSecondaryDiagonal, heatConductivity, heatConductivityMean, heatCapacity, solution, matrixDiagonal, matrixLowerTriangle, heatFlow)
+    #soilTemperature <- model_soiltemperature(noOfSoilLayers, noOfTempLayers, noOfTempLayersPlus1, soilSurfaceTemperature, timeStep, soilMoistureConst, baseTemp, initialSurfaceTemp, densityAir, specificHeatCapacityAir, densityHumus, specificHeatCapacityHumus, densityWater, specificHeatCapacityWater, quartzRawDensity, specificHeatCapacityQuartz, nTau, layerThickness, soilBulkDensity, saturation, soilOrganicMatter, soilTemperature, V, B, volumeMatrix, volumeMatrixOld, matrixPrimaryDiagonal, matrixSecondaryDiagonal, heatConductivity, heatConductivityMean, heatCapacity, solution, matrixDiagonal, matrixLowerTriangle, heatFlow)
+    soilTemperature <- model_soiltemperature(noOfSoilLayers, noOfTempLayers, noOfTempLayersPlus1, soilSurfaceTemperature, timeStep, soilMoistureConst, baseTemp, initialSurfaceTemp, densityAir, specificHeatCapacityAir, densityHumus, specificHeatCapacityHumus, densityWater, specificHeatCapacityWater, quartzRawDensity, specificHeatCapacityQuartz, nTau, layerThickness, soilBulkDensity, saturation, soilOrganicMatter, initialSoilTemperature, V, B, volumeMatrix, volumeMatrixOld, matrixPrimaryDiagonal, matrixSecondaryDiagonal, heatConductivity, heatConductivityMean, heatCapacity, solution, matrixDiagonal, matrixLowerTriangle, heatFlow)
     return (list ("soilSurfaceTemperature" = soilSurfaceTemperature,"soilTemperature" = soilTemperature))
 }

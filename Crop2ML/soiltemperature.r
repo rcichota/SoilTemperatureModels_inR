@@ -523,5 +523,6 @@ model_soiltemperature <- function (noOfSoilLayers,
     }
     volumeMatrixOld[groundLayer+1] <- volumeMatrix[groundLayer+1]
     volumeMatrixOld[bottomLayer+1] <- volumeMatrix[bottomLayer+1]
-    return (list('soilTemperature' = soilTemperature))
+    #return (list('soilTemperature' = soilTemperature))
+    return (soilTemperature)
 }

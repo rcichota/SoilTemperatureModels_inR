@@ -84,5 +84,6 @@ model_nosnowsoilsurfacetemperature <- function (tmin,
     {
         soilSurfaceTemperature <- soilSurfaceTemperature * 0.5
     }
-    return (list('soilSurfaceTemperature' = soilSurfaceTemperature))
+    #return (list('soilSurfaceTemperature' = soilSurfaceTemperature))
+    return (soilSurfaceTemperature)
 }
