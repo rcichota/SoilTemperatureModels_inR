@@ -79,7 +79,7 @@ Note that the model will run over all dates in the weather file.
 run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID, pawID )
 {
   # get site data
-  siteFilePath <- here("data", "Site.txt")
+  siteFilePath <- here("data", "WeatherMetadata.txt")
   sitesData <- read.table(siteFilePath, skip = 2, header = TRUE)
   siteData <- filter(sitesData, WST_ID == locationID)
 
@@ -89,7 +89,7 @@ run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID,
   weatherData <- read.table(weatherFilePath, header = TRUE)
 
   # get general soil data (soil type, etc)
-  soilsFilePath <- here("data", "Soil.txt")
+  soilsFilePath <- here("data", "SoilMetadata.txt")
   soilsGeneralData <- read.table(soilsFilePath, skip = 2, header = TRUE)
   soilGeneralData <- filter(soilsGeneralData, SOIL_ID == soilID)
 
