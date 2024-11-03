@@ -1,0 +1,236 @@
+---
+title: "RunSensyAnalysisSims_Crop2ML_SoilTemp"
+author: "RCichota"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# Running simulations with soil temperature models from Crop2ML in R - sensitivity analysis set
+
+This scripts aim to run a series of soil temperature models generated using Crop2ML for the R environment.
+These runs simulate soil temperature over a range of scenarios designed to meet two basic objectives:
+ - Test whether Crop2ML generated the code for the various models appropriately (i.e. the results from re-runs match the set of reference values, produced in the native code);
+ - Produce data for model inter-comparison and a sensitivity analysis. For this, the scenarios cover a wide range of climatic and edaphic conditions, and simulations run over 30 years. 
+Further details on factors and methodology for the sensitivity analysis run can be found at: https://drive.google.com/drive/folders/1-JI2jezJ23MF5twc9kRFLU9SD7IJugoQ
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load some libraries
+library(here)
+library(gsubfn)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# load DSSAT-EPIC component
+source(here("Crop2ML", "STEMP_EPIC_Component.r"))
+
+```
+
+## Experiment setup
+
+The scenarios for which each model will be run comprise the following factors:
+ - Weather data from seven location around the world (Gainesville, FL, USA; Müncheberg, Germany; Cali, Colombia; Lusignan, France; Maricopa, AZ, USA; Montpellier, France; Quebec City, Canada);
+ - Soil parameters for four standard soils (silty clay, silty loam, sandy loam, and sandy);
+ - Soil cover mimicking three LAI (leaf area index) levels (0, 2, and 7);
+ - Five soil moisture levels, defined as fraction of available water content (0, 0.25, 0.5, 0.75, and 1.0);
+All simulations are run continuously over 30 years and soil temperature (mean, minimum and maximum, if available) are recorded for each soil layer (defined by the following layer structure: 0-5, 5-15, 15-30, 30-60, 60-90, 90-120, 120-150, 150-180, 180-210 cm). This should compound to 420 simulations for each model.
+There are currently eight soil temperature models available to run in R (APSIM-Campbel, Bioma-SWAT, DSSAT-EPIC, DSSAT-ST, MONICA, SimPlace-APEX, SiriusQuality, STICS).
+The weather data and soil parameters are given in text files (sourced and formatted by the DSSAT team), additional site and soil type specific are also recorded in a text file, all in stored in the 'data' folder.
+
+```{r experimentSettings}
+
+# define the treatment levels for the experiment (IDs follow the order of sites, models, etc. given above)
+modelsToRun <- c("APC", "SWC", "DEC", "DSC", "MOC", "SAC", "SQC", "STC")
+locationIDsToRun <- c("USGA", "DEMU", "COCA", "FRLU", "USMA", "FRMO", "CAQC")
+soilsToRun <- c("SICL", "SILO", "SALO", "SAND")
+laisToRun <- c(0, 2, 7)
+pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
+
+# define the temperature model to run
+temperatureModel <- modelsToRun[3]
+testToRun <- "One"
+
+# define a selection of factors defining one experimental run
+if (testToRun == "One")
+{
+  locationID <- locationIDsToRun[7]
+  soilID <- soilsToRun[1]
+  laiID <- laisToRun[3]
+  pawID <- pawsToRun[3]
+  run_SensitivityScenario(temperatureModel, locationID, soilID, laiID, pawID)
+} else
+{
+  # run all experiments (combinations of location, soil, LAI, and PAW)
+  #run_SensitivityExperiments(workingFolder, temperatureModel, locationIDsToRun, soilsToRun, laisToRun, pawsToRun)
+}
+
+```
+
+## Setting up simulations
+
+This is a function that takes the values defining one scenario (and model) and sets up the parameter set and inputs needed to run a simulation. The values needed are gathered from the text files in the 'data' folder. Finally, the outputs are formatted as required for the sensitivity analysis and saved in text files in the 'outputs' folder.
+Note that the model will run over all dates in the weather file.
+
+```{r simulationSettings}
+
+run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID, pawID )
+{
+  # get site data
+  siteFilePath <- here("data", "Site.txt")
+  sitesData <- read.table(siteFilePath, skip = 2, header = TRUE)
+  siteData <- filter(sitesData, WST_ID == locationID)
+
+  # get the weather data (daily values)
+  weatherFilename <- paste0(locationID, "L", laiID, "AW", format(round(pawID,2), nsmall=2), ".WTH")
+  weatherFilePath <- here("data", weatherFilename)
+  weatherData <- read.table(weatherFilePath, header = TRUE)
+
+  # get general soil data (soil type, etc)
+  soilsFilePath <- here("data", "Soil.txt")
+  soilsGeneralData <- read.table(soilsFilePath, skip = 2, header = TRUE)
+  soilGeneralData <- filter(soilsGeneralData, SOIL_ID == soilID)
+
+  # get soil profile data
+  soilLayerFileName <- paste0("SoilLayers_", soilID, ".txt")
+  soilLayerFilePath <- here("data", soilLayerFileName)
+  soilLayerData <- read.table(soilLayerFilePath, skip = 2, header = TRUE)
+
+  # set the value for soil water for the PAW treatment being simulated
+  soilWaterToRun <- pawID*(soilLayerData$SLDUL - soilLayerData$SLLL) + soilLayerData$SLLL
+
+  # set the value of biomass for the LAI treatment being simulated
+  laisToRun <- c(0, 2, 7)
+  biomassToRun <- switch(which(laisToRun==laiID), 0.0, 1800.0, 10500.0)
+
+  # run one simulation
+  if(temperatureModel=="DEC")
+  {
+    outputData <- run_DECmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else{
+    cat("Model ", temperatureModel, " has not been implemented yet")
+  }
+
+  # save the outputs
+  outputFileName <- paste0("SoilTemperature_RR_", temperatureModel, "_", locationID, "_", soilID, "_L", laiID, "_AW", format(round(pawID, 2), nsmall=2), ".txt")
+  outputsFilePath <- here("outputs", outputFileName)
+  write.table(outputData, outputsFilePath, sep="\t", row.names=FALSE, quote=FALSE)
+}
+
+```
+
+
+## Run the DSSAT-EPIC model
+
+This function takes the set of parameters and inputs needed to run the soil temperature model from DSSAT-EPIC, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation DSSAT-Epic model}
+
+run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # set model initialisation
+  initialState <- init_stemp_epic(
+    NL=nrow(soilLayerData),
+    ISWWAT="Y",
+    BD=soilLayerData$SLBDM,
+    DLAYR=soilLayerData$THICK,
+    DS=soilLayerData$SLLB,
+    DUL=soilLayerData$SLDUL,
+    LL=soilLayerData$SLLL,
+    NLAYR=nrow(soilLayerData),
+    TAMP=siteData$TAMP,
+    RAIN=weatherData$RAIN[1],
+    SW=soilWaterData,
+    TAVG=weatherData$T2M[1],
+    TMAX=weatherData$TMAX[1],
+    TMIN=weatherData$TMIN[1],
+    TAV=siteData$TAV,
+    DEPIR=0,
+    BIOMAS=biomassData,
+    MULCHMASS=0,
+    SNOW=weatherData$SNOW[1])
+
+  # collect some variables that are needed on CalculateModel
+  previousCUMDPT <- initialState$CUMDPT
+  previousDSMID <- initialState$DSMID
+  previousTDL <- initialState$TDL
+  previousTMA <- initialState$TMA
+  previousNDays <- initialState$NDays
+  previousWetDay <- initialState$WetDay
+  previousX2_PREV <- initialState$X2_PREV
+  previousSRFTEMP <- initialState$SRFTEMP
+  previousST <- initialState$ST
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_stemp_epic(
+      BD=soilLayerData$SLBDM,
+      RAIN=weatherData$RAIN[day],
+      NDays=previousNDays,
+      DEPIR=0,
+      TMIN=weatherData$TMIN[day],
+      WetDay=previousWetDay,
+      DUL=soilLayerData$SLDUL,
+      BIOMAS=biomassData,
+      DS=soilLayerData$SLLB,
+      TAMP=siteData$TAMP,
+      DLAYR =soilLayerData$THICK,
+      MULCHMASS=0,
+      LL=soilLayerData$SLLL,
+      TDL=previousTDL,
+      X2_PREV=previousX2_PREV,
+      SW=soilWaterData,
+      DSMID=previousDSMID,
+      NLAYR=nrow(soilLayerData),
+      TMAX=weatherData$TMAX[day],
+      TAV=siteData$TAV,
+      SNOW=weatherData$SNOW[day],
+      TMA=previousTMA,
+      TAVG=weatherData$T2M[day],
+      SRFTEMP=previousSRFTEMP,
+      ST=previousST,
+      NL=nrow(soilLayerData),
+      ISWWAT="Y",
+      CUMDPT=previousCUMDPT)
+
+    # collect some variables that are needed for next iteration
+    previousCUMDPT <- onProcessState$CUMDPT
+    previousDSMID <- onProcessState$DSMID
+    previousTDL <- onProcessState$TDL
+    previousTMA <- onProcessState$TMA
+    previousNDays <- onProcessState$NDays
+    previousWetDay <- onProcessState$WetDay
+    previousX2_PREV <- onProcessState$X2_PREV
+    previousSRFTEMP <- onProcessState$SRFTEMP
+    previousST <- onProcessState$ST
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SRFTEMP, 6), round(onProcessState$ST, 6)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+  }
+
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+```
