@@ -21,10 +21,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(here)
 library(gsubfn)
 library(dplyr)
-library(ggplot2)
 library(lubridate)
+library(ggplot2)
 
-# load DSSAT-EPIC component
+# load DSSAT native component
 source(here("Crop2ML", "STEMP_Component.r"))
 
 ```
@@ -55,7 +55,6 @@ soilLayerData <- read.table(soilLayerFilePath, skip = 2, header = TRUE)
 Firstly the dates to start and end the period over which the simulation will run is defined, then the soil water content and some model specific variables/parameters. Finally the model is run (loop over the weather data)
 Here we are collecting a few variables of interest, putting in a data.frame with names and formats wanted (assumed), and then saving it to a file in the outputs folder.
 The example simulation runs over one year, the data collected consists of soil temperature for the various depths (as defined in soilLayerData) for each simulated date.
-
 
 ```{r run simulation}
 
@@ -96,7 +95,7 @@ initialState <- init_stemp(
   TAMP=siteData$TAMP,
   DOY=yday(as.Date(weatherData$date[firstDay])))
 
-# collect some variables that are needed on CalculateModel
+# collect some variables that are needed for next iteration
 previousCUMDPT <- initialState$CUMDPT
 previousDSMID <- initialState$DSMID
 previousTMA <- initialState$TMA
@@ -105,7 +104,7 @@ previousATOT <- initialState$ATOT
 previousSRFTEMP <- initialState$SRFTEMP
 previousST <- initialState$ST
 
-# run model between two days (date in weather file)
+# run model between two days (dates in weather file)
 for (day in firstDay:lastDay)
 {
   onProcessState <- model_stemp_(
@@ -155,7 +154,9 @@ outputData <- data.frame(simulatedDate, simulatedDepth, simulatedTemperature)
 colnames(outputData) <- c("Date", "Depth", "Temperature")
 
 # save the outputs
-outputFilePath <- here("outputs", "OutputDataExample.csv")
+thisModel <- "DSSAT"
+outputFileName <- paste0("OutputDataExample_", thisModel, ".csv")
+outputFilePath <- here("outputs", outputFileName)
 write.table(outputData, outputFilePath, sep=",", row.names=FALSE, quote=FALSE)
 
 ```

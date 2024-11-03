@@ -14,13 +14,14 @@ Crop2ML (Crop Modelling Meta Language) is a framework to translate components fr
 
 A version of the EPIC soil temperature model from the DSSAT platform (https://dssat.net) was converted into R functions using Crop2ML (working version as of Oct/2024). The scripts below show how to use the model stand-alone in R. This is a simple demonstration on how to set up and run the model for a very simple example, as well as record and graph some results from this example. More elaborate exercises and coupling with other models are possible but not in scope here.
 
-```{r basic setup, include=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 # load some libraries
 library(here)
 library(gsubfn)
 library(dplyr)
+library(lubridate)
 library(ggplot2)
 
 # load DSSAT-EPIC component
@@ -100,7 +101,7 @@ initialState <- init_stemp_epic(
   MULCHMASS=massMulch,
   SNOW=snowCover)
 
-# collect some variables that are needed on CalculateModel
+# collect some variables that are needed for next iteration
 previousCUMDPT <- initialState$CUMDPT
 previousDSMID <- initialState$DSMID
 previousTDL <- initialState$TDL
@@ -111,7 +112,7 @@ previousX2_PREV <- initialState$X2_PREV
 previousSRFTEMP <- initialState$SRFTEMP
 previousST <- initialState$ST
 
-# run model between two days (date in weather file)
+# run model between two days (dates in weather file)
 for (day in firstDay:lastDay)
 {
   onProcessState <- model_stemp_epic(
@@ -166,7 +167,9 @@ outputData <- data.frame(simulatedDate, simulatedDepth, simulatedTemperature)
 colnames(outputData) <- c("Date", "Depth", "Temperature")
 
 # save the outputs
-outputFilePath <- here("outputs", "OutputDataExample.csv")
+thisModel <- "DssatEPIC"
+outputFileName <- paste0("OutputDataExample_", thisModel, ".csv")
+outputFilePath <- here("outputs", outputFileName)
 write.table(outputData, outputFilePath, sep=",", row.names=FALSE, quote=FALSE)
 
 ```
