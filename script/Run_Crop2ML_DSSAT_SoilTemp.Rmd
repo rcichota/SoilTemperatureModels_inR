@@ -24,7 +24,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 
-# load DSSAT native component
+# load the DSSAT native component
 source(here("Crop2ML", "STEMP_Component.r"))
 
 ```
@@ -52,7 +52,7 @@ soilLayerData <- read.table(soilLayerFilePath, skip = 2, header = TRUE)
 
 ## Run the model over a number of dates
 
-Firstly the dates to start and end the period over which the simulation will run is defined, then the soil water content and some model specific variables/parameters. Finally the model is run (loop over the weather data)
+Firstly the dates to start and end the period over which the simulation will run are defined, then the soil water content and some model specific variables/parameters. Finally the model is run (loop over the weather data)
 Here we are collecting a few variables of interest, putting in a data.frame with names and formats wanted (assumed), and then saving it to a file in the outputs folder.
 The example simulation runs over one year, the data collected consists of soil temperature for the various depths (as defined in soilLayerData) for each simulated date.
 
