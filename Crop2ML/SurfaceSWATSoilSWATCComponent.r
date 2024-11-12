@@ -1,8 +1,10 @@
 library(gsubfn)
-library (gsubfn) 
-setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/BiomaSurfaceSWATSoilSWATC/src/r')
-source('Surfacetemperatureswat.r')
-source('Soiltemperatureswat.r')
+#library (gsubfn) 
+#setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/BiomaSurfaceSWATSoilSWATC/src/r')
+#source('Surfacetemperatureswat.r')
+#source('Soiltemperatureswat.r')
+source(file.path(dirname(sys.frame(1)$ofile), "Surfacetemperatureswat.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Soiltemperatureswat.r"))
 
 model_surfaceswatsoilswatc <- function (AirTemperatureMaximum,
          AirTemperatureMinimum,
