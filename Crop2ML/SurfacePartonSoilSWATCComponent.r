@@ -1,8 +1,10 @@
 library(gsubfn)
-library (gsubfn) 
-setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/BiomaSurfacePartonSoilSWATC/src/r')
-source('Surfacetemperatureparton.r')
-source('Soiltemperatureswat.r')
+#library (gsubfn) 
+#setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/BiomaSurfacePartonSoilSWATC/src/r')
+#source('Surfacetemperatureparton.r')
+#source('Soiltemperatureswat.r')
+source(file.path(dirname(sys.frame(1)$ofile), "Surfacetemperatureparton.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Soiltemperatureswat.r"))
 
 model_surfacepartonsoilswatc <- function (DayLength,
          GlobalSolarRadiation,
