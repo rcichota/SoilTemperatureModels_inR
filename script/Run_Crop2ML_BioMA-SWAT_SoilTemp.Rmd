@@ -1,17 +1,17 @@
 ---
-title: "Run_Crop2ML_BioMA-Parton_SoilTemp"
+title: "Run_Crop2ML_BioMA-SWAT_SoilTemp"
 author: "RCichota"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# Running a soil temperature model from Crop2ML in R - BioMA-Parton
+# Running a soil temperature model from Crop2ML in R - BioMA-SWAT
 
 This is part of a series to demonstrate how to run in R environment a soil temperature model generated using Crop2ML.
 
 Crop2ML (Crop Modelling Meta Language) is a framework to translate components from and to specific modeling platforms. It provides a solution that can generate components automatically, based on a metalanguage, to simulate particular soil and/or plant processes. The framework was proposed by the Agricultural Model Exchange Initiative (AMEI) to facilitate the exchange and reuse of model components between different process-based modeling platforms used in agricultural and environmental research. More info at: https://crop2ml.org
 
-A version of the Parton soil temperature model from the BioMA platform (https://www.quantitative-plant.org/model/BioMA and https://agri4cast.jrc.ec.europa.eu/dataportal/index.aspx?o=s) was converted into R functions using Crop2ML (working version as of Oct/2024). The scripts below show how to use the model stand-alone in R. This is a simple demonstration on how to set up and run the model for a very simple example, as well as record and graph some results from this example. More elaborate exercises and coupling with other models are possible but not in scope here.
+A version of the SWAT soil temperature model from the BioMA platform (https://www.quantitative-plant.org/model/BioMA and https://agri4cast.jrc.ec.europa.eu/dataportal/index.aspx?o=s) was converted into R functions using Crop2ML (working version as of Oct/2024). The scripts below show how to use the model stand-alone in R. This is a simple demonstration on how to set up and run the model for a very simple example, as well as record and graph some results from this example. More elaborate exercises and coupling with other models are possible but not in scope here.
 
 
 ```{r setup, include=FALSE}
@@ -24,8 +24,8 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 
-# load the BioMA-Parton component
-source(here("Crop2ML", "SurfacePartonSoilSWATCComponent.r"))
+# load the BioMA-SWAT component
+source(here("Crop2ML", "SurfaceSWATSoilSWATCComponent.r"))
 
 ```
 
@@ -91,18 +91,19 @@ previousST <- initialState$SoilTemperatureByLayers
 # run model between two days (dates in weather file)
 for (day in firstDay:lastDay)
 {
-  onProcessState <- model_surfacepartonsoilswatc(
-    DayLength=weatherData$daylength[day],
+  onProcessState <- model_surfaceswatsoilswatc(
+    AirTemperatureMaximum=weatherData$maxt[day],
+    AirTemperatureMinimum=weatherData$mint[day],
     GlobalSolarRadiation=weatherData$radn[day],
     AboveGroundBiomass=coverBiomass,
-    AirTemperatureMinimum=weatherData$mint[day],
-    AirTemperatureMaximum=weatherData$maxt[day],
-    LayerThickness=soilLayerData$Thickness/1000.0,
+    WaterEquivalentOfSnowPack,
+    Albedo=siteData$SAlbedo,
     BulkDensity=soilLayerData$BD,
-    SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0,
     AirTemperatureAnnualAverage=siteData$TAV,
     VolumetricWaterContent=currentSWC,
-    LagCoefficient=0.8)
+    SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0,
+    LagCoefficient=0.8,
+    LayerThickness=soilLayerData$Thickness/1000.0)
 
   # collect some variables that are needed for next iteration
   previousST <- onProcessState$SoilTemperatureByLayers
@@ -118,7 +119,7 @@ outputData <- data.frame(simulatedDate, simulatedDepth, simulatedTemperature)
 colnames(outputData) <- c("Date", "Depth", "Temperature")
 
 # save the outputs
-thisModel <- "BioMA-Parton"
+thisModel <- "BioMA-SWAT"
 outputFileName <- paste0("OutputDataExample_", thisModel, ".csv")
 outputFilePath <- here("outputs", outputFileName)
 write.table(outputData, outputFilePath, sep=",", row.names=FALSE, quote=FALSE)
