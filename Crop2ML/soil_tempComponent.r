@@ -1,11 +1,16 @@
 library(gsubfn)
-library (gsubfn) 
-setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/Stics_soil_temperature/src/r')
-source('Temp_amp.r')
-source('Temp_profile.r')
-source('Layers_temp.r')
-source('Canopy_temp_avg.r')
-source('Update.r')
+#library (gsubfn) 
+#setwd('D:/Docs/AMEI_Workshop/AMEI_10_14_2022/Models/Stics_soil_temperature/src/r')
+#source('Temp_amp.r')
+#source('Temp_profile.r')
+#source('Layers_temp.r')
+#source('Canopy_temp_avg.r')
+#source('Update.r')
+source(file.path(dirname(sys.frame(1)$ofile), "Temp_amp.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Temp_profile.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Layers_temp.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Canopy_temp_avg.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Update.r"))
 
 model_soil_temp <- function (min_temp,
          max_temp,
