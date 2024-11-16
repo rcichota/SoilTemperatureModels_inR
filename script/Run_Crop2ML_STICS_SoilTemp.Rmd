@@ -64,11 +64,7 @@ firstDay <- match(startDate, weatherData$date)
 lastDay <- match(endDate, weatherData$date)
 
 # define some variables specific to a given run/simulation
-fractionPAW <- 0.75
-currentSWC <- soilLayerData$LLC + (soilLayerData$DUL - soilLayerData$LLC)*fractionPAW
-
-coverBiomass <- 0  # biomass aboveground
-
+# ...none...
 # create some variables to collect outputs of interest
 simulatedDate <- c()
 simulatedDepth <- c()
@@ -81,7 +77,7 @@ initialState <- init_temp_profile(
   layer_thick=soilLayerData$Thickness/10.0)
 
 # collect some variables that are needed for next iteration
-previousPrev_canopy_temp <- initialState$prev_canopy_temp
+previousCanopy_temp <- initialState$prev_canopy_temp
 previousST <- initialState$prev_temp_profile
 
 # run model between two days (dates in weather file)
@@ -91,7 +87,7 @@ for (day in firstDay:lastDay)
     min_temp=weatherData$mint[day],
     max_temp=weatherData$maxt[day],
     prev_temp_profile=previousST,
-    prev_canopy_temp=previousPrev_canopy_temp,
+    prev_canopy_temp=previousCanopy_temp,
     min_air_temp=weatherData$mint[day],
     air_temp_day1=weatherData$mint[firstDay],
     layer_thick=soilLayerData$Thickness/10.0,
@@ -99,13 +95,13 @@ for (day in firstDay:lastDay)
     max_canopy_temp=weatherData$maxt[day])
 
   # collect some variables that are needed for next iteration
-  previousPrev_canopy_temp <- onProcessState$prev_canopy_temp
-  previousST <- onProcessState$layer_temp
+  previousCanopy_temp <- onProcessState$prev_canopy_temp
+  previousST <- onProcessState$prev_temp_profile
 
   # collect output data
-  simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData) + 1))
-  simulatedDepth <- c(simulatedDepth, c(0.0, (soilLayerData$LayerTop+soilLayerData$LayerBot)/2))
-  simulatedTemperature <- c(simulatedTemperature, c("NA", round(onProcessState$layer_temp, 6)))
+  simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData)))
+  simulatedDepth <- c(simulatedDepth, c(soilLayerData$LayerTop+soilLayerData$LayerBot)/2)
+  simulatedTemperature <- c(simulatedTemperature, round(onProcessState$layer_temp, 6))
 }
 
 # prepare the output table

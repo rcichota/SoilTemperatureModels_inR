@@ -38,5 +38,6 @@ model_canopy_temp_avg <- function (min_canopy_temp,
     #'                          ** min : 0.0
     #'                          ** unit : degC
     canopy_temp_avg <- (max_canopy_temp + min_canopy_temp) / 2
-    return (list('canopy_temp_avg' = canopy_temp_avg))
+    #return (list('canopy_temp_avg' = canopy_temp_avg))
+    return (canopy_temp_avg)
 }

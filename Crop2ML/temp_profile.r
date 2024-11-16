@@ -8,8 +8,9 @@ init_temp_profile <- function (min_air_temp,
     prev_temp_profile <- NULL
     prev_canopy_temp <- 0.0
     soil_depth <- sum(layer_thick)
-    prev_temp_profile <- vector(, soil_depth)
-    prev_temp_profile <- c(air_temp_day1) * soil_depth
+#    prev_temp_profile <- vector(, soil_depth)
+#    prev_temp_profile <- c(air_temp_day1) * soil_depth
+    prev_temp_profile <- rep(air_temp_day1, soil_depth)
     prev_canopy_temp <- air_temp_day1
     return (list ("temp_amp" = temp_amp,"prev_temp_profile" = prev_temp_profile,"prev_canopy_temp" = prev_canopy_temp))
 }
@@ -108,5 +109,6 @@ model_temp_profile <- function (temp_amp,
     for( z in seq(1, n + 1-1, 1)){
         temp_profile[z - 1+1] <- prev_temp_profile[z - 1+1] - (vexp[(z - 1)+1] * (prev_canopy_temp - min_air_temp)) + (0.1 * (prev_canopy_temp - prev_temp_profile[z - 1+1])) + (temp_amp * vexp[(z - 1)+1] / 2)
     }
-    return (list('temp_profile' = temp_profile))
+    return (temp_profile)
+    #return (list('temp_profile' = temp_profile))
 }

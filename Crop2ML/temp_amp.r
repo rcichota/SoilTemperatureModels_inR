@@ -38,5 +38,6 @@ model_temp_amp <- function (min_temp,
     #'                          ** min : 0.0
     #'                          ** unit : degC
     temp_amp <- max_temp - min_temp
-    return (list('temp_amp' = temp_amp))
+    return (temp_amp)
+    #return (list('temp_amp' = temp_amp))
 }
