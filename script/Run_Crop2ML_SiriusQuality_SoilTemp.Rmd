@@ -63,8 +63,6 @@ firstDay <- match(startDate, weatherData$date)
 lastDay <- match(endDate, weatherData$date)
 
 # define some variables specific to a given run/simulation
-fractionPAW <- 0.75
-currentSWC <- soilLayerData$LLC + (soilLayerData$DUL - soilLayerData$LLC)*fractionPAW
 lambda <-  2.454
 paramA <- 0.5
 paramB <- 1.8
@@ -86,6 +84,7 @@ initialState <- init_calculatesoiltemperature(
   maxTAir=weatherData$maxt[firstDay])
 
 # collect some variables that are needed for next iteration
+previousDeepLayerT <- initialState
 
 # run model between two days (dates in weather file)
 for (day in firstDay:lastDay)
@@ -95,14 +94,16 @@ for (day in firstDay:lastDay)
     minTAir=weatherData$mint[day],
     lambda_=lambda,
     meanAnnualAirTemp=siteData$TAV,
+    deepLayerT=previousDeepLayerT,
     heatFlux=0.0,  # to check
     maxTAir=weatherData$maxt[day],
     b=paramB,
     c=paramC,
     a=paramA,
-    dayLength=weatherData$daylength[day])
+    dayLength=weatherData$DayLength[day])
 
   # collect some variables that are needed for next iteration
+ previousDeepLayerT <- onProcessState$deepLayerT
 
   # collect output data
   simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData) + 1))
