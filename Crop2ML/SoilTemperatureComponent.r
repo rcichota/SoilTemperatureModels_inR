@@ -1,8 +1,10 @@
 library(gsubfn)
-library (gsubfn) 
-setwd('C:/Users/raihauti/Documents/SQ_Soil_Temperature/src/r')
-source('Calculatesoiltemperature.r')
-source('Calculatehourlysoiltemperature.r')
+#library (gsubfn) 
+#setwd('C:/Users/raihauti/Documents/SQ_Soil_Temperature/src/r')
+#source('Calculatesoiltemperature.r')
+#source('Calculatehourlysoiltemperature.r')
+source(file.path(dirname(sys.frame(1)$ofile), "Calculatesoiltemperature.r"))
+source(file.path(dirname(sys.frame(1)$ofile), "Calculatehourlysoiltemperature.r"))
 
 model_soiltemperature <- function (meanTAir,
          minTAir,
