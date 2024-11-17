@@ -341,6 +341,79 @@ run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   return(outputData)
 }
+
+```
+
+
+## Run the BioMA-Parton native model
+
+This function takes the set of parameters and inputs needed to run the Parton soil temperature model from BioMA, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation BioMA-Parton model}
+
+run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # define some variables specific to a given run/simulation
+  doWater <- "Y"     # soil water switch
+
+  # set model initialisation
+  initialState <- init_soiltemperatureswat(
+    VolumetricWaterContent=currentSWC,
+    LayerThickness=soilLayerData$Thickness/1000.0,
+    LagCoefficient=0.8,
+    AirTemperatureAnnualAverage=siteData$TAV,
+    BulkDensity=soilLayerData$BD,
+    SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0)
+
+  # collect some variables that are needed on CalculateModel
+  previousST <- initialState$SoilTemperatureByLayers
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_surfacepartonsoilswatc(
+      DayLength=weatherData$daylength[day],
+      GlobalSolarRadiation=weatherData$radn[day],
+      AboveGroundBiomass=coverBiomass,
+      AirTemperatureMinimum=weatherData$mint[day],
+      AirTemperatureMaximum=weatherData$maxt[day],
+      LayerThickness=soilLayerData$Thickness/1000.0,
+      BulkDensity=soilLayerData$BD,
+      SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0,
+      AirTemperatureAnnualAverage=siteData$TAV,
+      VolumetricWaterContent=currentSWC,
+      LagCoefficient=0.8)
+
+    # collect some variables that are needed for next iteration
+    previousST <- onProcessState$SoilTemperatureByLayers
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SurfaceSoilTemperature, 6), round(onProcessState$SoilTemperatureByLayers, 6)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+  }
+
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+
 ```
 
 
