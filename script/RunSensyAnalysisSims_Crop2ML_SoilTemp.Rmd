@@ -308,3 +308,68 @@ run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 }
 
 ```
+
+
+## Run the STICS model
+
+This function takes the set of parameters and inputs needed to run the soil temperature model from STICS, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation STICS model}
+
+run_STCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # set model initialisation
+  initialState <- init_temp_profile(
+    min_air_temp=weatherData$mint[firstDay],
+    air_temp_day1=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
+    layer_thick=soilLayerData$Thickness/10.0)
+
+  # collect some variables that are needed on CalculateModel
+  previousCanopy_temp <- initialState$prev_canopy_temp
+  previousST <- initialState$prev_temp_profile
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_soil_temp(
+      min_temp=weatherData$mint[day],
+      max_temp=weatherData$maxt[day],
+      prev_temp_profile=previousST,
+      prev_canopy_temp=previousCanopy_temp,
+      min_air_temp=weatherData$mint[day],
+      air_temp_day1=weatherData$mint[firstDay],
+      layer_thick=soilLayerData$Thickness/10.0,
+      min_canopy_temp=weatherData$mint[day],
+      max_canopy_temp=weatherData$maxt[day])
+
+    # collect some variables that are needed for next iteration
+  previousCanopy_temp <- onProcessState$prev_canopy_temp
+  previousST <- onProcessState$prev_temp_profile
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c("na", round(onProcessState$layer_temp, 6)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+  }
+
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+
+```
