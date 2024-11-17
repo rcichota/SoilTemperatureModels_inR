@@ -236,6 +236,114 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 ```
 
 
+## Run the DSSAT native model
+
+This function takes the set of parameters and inputs needed to run the native soil temperature model from DSSAT, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation DSSAT native model}
+
+run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+ # define some variables specific to a given run/simulation
+  doWater <- "Y"     # soil water switch
+
+  # set model initialisation
+  initialState <- init_stemp(
+    NL=nrow(soilLayerData),
+    ISWWAT=doWater,
+    BD=soilLayerData$BD,
+    DLAYR=soilLayerData$Thickness,
+    DS=soilLayerData$LayerBot,
+    DUL=soilLayerData$DUL,
+    LL=soilLayerData$LLC,
+    NLAYR=nrow(soilLayerData),
+    MSALB=siteData$SAlbedo,
+    SRAD=weatherData$radn[firstDay],
+    SW=currentSWC,
+    TAVG=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
+    TMAX=weatherData$maxt[firstDay],
+    XLAT=siteData$Latitude,
+    TAV=siteData$TAV,
+    TAMP=siteData$TAMP,
+    DOY=yday(as.Date(weatherData$date[firstDay])))
+
+  # collect some variables that are needed on CalculateModel
+  previousCUMDPT <- initialState$CUMDPT
+  previousDSMID <- initialState$DSMID
+  previousTMA <- initialState$TMA
+  previousTDL <- initialState$TDL
+  previousATOT <- initialState$ATOT
+  previousSRFTEMP <- initialState$SRFTEMP
+  previousST <- initialState$ST
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_stemp_(
+      TMAX=weatherData$maxt[day],
+      MSALB=siteData$SAlbedo,
+      HDAY=initialState$HDAY,
+      NL=nrow(soilLayerData),
+      SRFTEMP=previousSRFTEMP,
+      LL=soilLayerData$LLC,
+      NLAYR=nrow(soilLayerData),
+      DS=soilLayerData$LayerBot,
+      ST=previousST,
+      SRAD=weatherData$radn[day],
+      TAMP=siteData$TAMP,
+      DLAYR =soilLayerData$Thickness,
+      TMA=previousTMA,
+      TDL=previousTDL,
+      ISWWAT=doWater,
+      CUMDPT=previousCUMDPT,
+      TAVG=(weatherData$mint[day]+weatherData$maxt[day])/2,
+      BD=soilLayerData$BD,
+      SW=currentSWC,
+      ATOT=previousATOT,
+      TAV=siteData$TAV,
+      XLAT=siteData$Latitude,
+      DUL=soilLayerData$DUL,
+      DSMID=previousDSMID,
+      DOY=yday(as.Date(weatherData$date[day])))
+  
+    # collect some variables that are needed for next iteration
+    previousCUMDPT <- onProcessState$CUMDPT
+    previousDSMID <- onProcessState$DSMID
+    previousTMA <- onProcessState$TMA
+    previousTDL <- onProcessState$TDL
+    previousATOT <- onProcessState$ATOT
+    previousSRFTEMP <- onProcessState$SRFTEMP
+    previousST <- onProcessState$ST
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SRFTEMP, 6), round(onProcessState$ST, 6)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+  }
+
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+```
+
+
 ## Run the SiriusQuality model
 
 This function takes the set of parameters and inputs needed to run the soil temperature model from SiriusQuality, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
