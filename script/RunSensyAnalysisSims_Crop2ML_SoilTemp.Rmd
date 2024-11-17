@@ -361,9 +361,6 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   simulatedSoilTempMin <- c()
   simulatedSoilTempMax <- c()
 
-  # define some variables specific to a given run/simulation
-  doWater <- "Y"     # soil water switch
-
   # set model initialisation
   initialState <- init_soiltemperatureswat(
     VolumetricWaterContent=currentSWC,
@@ -486,6 +483,160 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
 ```
 
+
+## Run the MONICA model
+
+This function takes the set of parameters and inputs needed to run the soil temperature model from MONICA, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation MONICA model}
+
+run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # define some variables specific to a given run/simulation
+  baseTemper <- 9.5        # base temperature
+  airDensity <- 1.25       # density of air (kg/m3)
+  airSpecHeat <- 1005.0    # specific heat capacity of air (J/kg/K)
+  humusDensity <- 1300.0   # density of humus (kg/m3)
+  humusSpecHeat <- 1920.0  # specific heat capacity of humus (J/kg/K)
+  waterDensity <- 1000.0   # density of water (kg/m3)
+  waterSpecHeat <- 4192.0  # specific heat capacity of water (J/kg/K)
+  quartzDensity <- 2650.0  # density of quartz mineral (kg/m3)
+  quartzSpecHeat <- 750.0  # specific heat capacity of quartz (J/kg/K)
+  n_Tau <- 0.65            # a parameter (?)
+  time_step <- 1.0         # time-step for calculations (-?)
+  iniSurfaceTemp <-  10.0  # initial surface temperature
+  dampingFactr <- 0.8      # a factor ??
+  currentLAI <- 0.0        # leaf area index, for computing cover
+  soilCover <- 1.0 - exp(-0.5 * currentLAI)
+  hasSnow <- FALSE         # flag whether there is snow in the ground
+
+  # re-map soil profile to MONICA requirements
+  monicaSoilThickness <- rep(50.0, 42)
+  currentSWC <- MapConcentrationByLayer(currentSWC, soilLayerData$Thickness, monicaSoilThickness)
+  monicaBD <- MapConcentrationByLayer(soilLayerData$BD*1000.0, soilLayerData$Thickness, monicaSoilThickness)
+  monicaSAT <- MapConcentrationByLayer(soilLayerData$SAT, soilLayerData$Thickness, monicaSoilThickness)
+  monicaOM <- MapConcentrationByLayer(soilLayerData$OC/0.57*100.0, soilLayerData$Thickness, monicaSoilThickness)
+  monicaSoilThickness <- rep(0.05, 44)  # set values in m, add two extra layers, kept empty
+
+  # set model initialisation
+  initialState <- init_soiltemperature(
+    noOfSoilLayers=length(monicaSoilThickness)-2,
+    noOfTempLayers=length(monicaSoilThickness),
+    noOfTempLayersPlus1=length(monicaSoilThickness)+1,
+    timeStep=time_step,
+    soilMoistureConst=currentSWC,
+    baseTemp=baseTemper,
+    initialSurfaceTemp=iniSurfaceTemp,
+    densityAir=airDensity,
+    specificHeatCapacityAir=airSpecHeat,
+    densityHumus=humusDensity,
+    specificHeatCapacityHumus=humusSpecHeat,
+    densityWater=waterDensity,
+    specificHeatCapacityWater=waterSpecHeat,
+    quartzRawDensity=quartzDensity,
+    specificHeatCapacityQuartz=quartzSpecHeat,
+    nTau=n_Tau,
+    layerThickness=monicaSoilThickness,
+    soilBulkDensity=monicaBD,
+    saturation=monicaSAT,
+    soilOrganicMatter=monicaOM)
+
+  # collect some variables that are needed on CalculateModel
+  base_V <- initialState$V
+  base_B <- initialState$B
+  base_volumeMatrix <- initialState$volumeMatrix
+  base_volumeMatrixOld <- initialState$volumeMatrixOld
+  base_matrixPrimaryDiagonal <- initialState$matrixPrimaryDiagonal
+  base_matrixSecondaryDiagonal <- initialState$matrixSecondaryDiagonal
+  base_heatConductivity <- initialState$heatConductivity
+  base_heatConductivityMean <- initialState$heatConductivityMean
+  base_heatCapacity <- initialState$heatCapacity
+  base_solution <- initialState$solution
+  base_matrixDiagonal <- initialState$matrixDiagonal
+  base_matrixLowerTriangle <- initialState$matrixLowerTriangle
+  base_heatFlow <- initialState$heatFlow
+  previousSurfaceTemperature <- initialState$soilSurfaceTemperature
+  previousSoilTemperature <- initialState$soilTemperature
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_soiltemperaturecomp(
+      tmin=weatherData$mint[day],
+      tmax=weatherData$maxt[day],
+      globrad=weatherData$radn[day],
+      dampingFactor=dampingFactr,
+      soilCoverage=soilCover,
+      soilSurfaceTemperatureBelowSnow=0,
+      hasSnowCover=hasSnow,
+      timeStep=time_step,
+      soilMoistureConst=currentSWC,
+      baseTemp=baseTemper,
+      initialSurfaceTemp=previousSurfaceTemperature,
+      densityAir=airDensity,
+      specificHeatCapacityAir=airSpecHeat,
+      densityHumus=humusDensity,
+      specificHeatCapacityHumus=humusSpecHeat,
+      densityWater=waterDensity,
+      specificHeatCapacityWater=waterSpecHeat,
+      quartzRawDensity=quartzDensity,
+      specificHeatCapacityQuartz=quartzSpecHeat,
+      nTau=n_Tau,
+      noOfTempLayers=length(monicaSoilThickness),
+      noOfTempLayersPlus1=length(monicaSoilThickness)+1,
+      noOfSoilLayers=length(monicaSoilThickness)-2,
+      layerThickness=monicaSoilThickness,
+      soilBulkDensity=monicaBD,
+      saturation=monicaSAT,
+      soilOrganicMatter=monicaOM,
+      initialSoilTemperature=previousSoilTemperature,
+      V=base_V,
+      B=base_B,
+      volumeMatrix=base_volumeMatrix,
+      volumeMatrixOld=base_volumeMatrixOld,
+      matrixPrimaryDiagonal=base_matrixPrimaryDiagonal,
+      matrixSecondaryDiagonal=base_matrixSecondaryDiagonal,
+      heatConductivity=base_heatConductivity,
+      heatConductivityMean=base_heatConductivityMean,
+      heatCapacity=base_heatCapacity,
+      solution=base_solution,
+      matrixDiagonal=base_matrixDiagonal,
+      matrixLowerTriangle=base_matrixLowerTriangle,
+      heatFlow=base_heatFlow)
+
+    # collect some variables that are needed for next iteration
+    previousSurfaceTemperature <- onProcessState$soilSurfaceTemperature
+    previousSoilTemperature <- onProcessState$soilTemperature
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    unMonicaSoilTemperature <- MapConcentrationByLayer(onProcessState$soilTemperature, monicaSoilThickness,soilLayerData$Thickness)
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$soilSurfaceTemperature, 6), round(unMonicaSoilTemperature, 6)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+  }
+
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+
+```
 
 
 ## Run the SiriusQuality model
