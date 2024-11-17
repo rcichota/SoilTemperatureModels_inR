@@ -27,18 +27,30 @@ library(ggplot2)
 # load DSSAT-EPIC component
 source(here("Crop2ML", "STEMP_EPIC_Component.r"))
 
+# load the DSSAT native component
+source(here("Crop2ML", "STEMP_Component.r"))
+
 ```
 
 ## Experiment setup
 
 The scenarios for which each model will be run comprise the following factors:
  - Weather data from seven location around the world (Gainesville, FL, USA; Müncheberg, Germany; Cali, Colombia; Lusignan, France; Maricopa, AZ, USA; Montpellier, France; Quebec City, Canada);
- - Soil parameters for four standard soils (silty clay, silty loam, sandy loam, and sandy);
+ - Soil parameters for four standard soils (silty clay, silty loam, sandy loam, and sandy. Defined by the following layer structure: 0-5, 5-15, 15-30, 30-60, 60-90, 90-120, 120-150, 150-180, 180-210 cm);
  - Soil cover mimicking three LAI (leaf area index) levels (0, 2, and 7);
  - Five soil moisture levels, defined as fraction of available water content (0, 0.25, 0.5, 0.75, and 1.0);
-All simulations are run continuously over 30 years and soil temperature (mean, minimum and maximum, if available) are recorded for each soil layer (defined by the following layer structure: 0-5, 5-15, 15-30, 30-60, 60-90, 90-120, 120-150, 150-180, 180-210 cm). This should compound to 420 simulations for each model.
-There are currently eight soil temperature models available to run in R (APSIM-Campbel, Bioma-SWAT, DSSAT-EPIC, DSSAT-ST, MONICA, SimPlace-APEX, SiriusQuality, STICS).
-The weather data and soil parameters are given in text files (sourced and formatted by the DSSAT team), additional site and soil type specific are also recorded in a text file, all in stored in the 'data' folder.
+All simulations are run continuously over 30 years and soil temperature (mean, minimum and maximum, if available) are recorded for each soil layer (including soil surface, if available). This should compound to 420 simulations for each model.
+There are currently nine soil temperature models available to run in R: 
+ - APSIM-Campbell (APC)*
+ - BioMA-Parton   (PSC)
+ - Bioma-SWAT     (SWC)
+ - DSSAT-EPIC     (DEC)
+ - DSSAT native   (DSC)
+ - MONICA         (MOC)
+ - SimPlace-APEX  (SAC)
+ - SiriusQuality  (SQC)
+ - STICS          (STC)
+The weather data and soil parameters are given in text files (sourced and formatted by the DSSAT team), additional site and soil type specific are also recorded in text files, all in stored in the 'data' folder.
 
 ```{r experimentSettings}
 
@@ -50,7 +62,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[3]
+temperatureModel <- modelsToRun[4]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -106,10 +118,41 @@ run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID,
   biomassToRun <- switch(which(laisToRun==laiID), 0.0, 1800.0, 10500.0)
 
   # run one simulation
+  if(temperatureModel=="APC")
+  {
+    outputData <- run_APCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
+  if(temperatureModel=="PSC")
+  {
+    outputData <- run_PSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
+  if(temperatureModel=="SWC")
+  {
+    outputData <- run_SWCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
   if(temperatureModel=="DEC")
   {
     outputData <- run_DECmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
-  } else{
+  } else
+  if(temperatureModel=="DSC")
+  {
+    outputData <- run_DSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
+  if(temperatureModel=="MOC")
+  {
+    outputData <- run_MOCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
+  if(temperatureModel=="SAC")
+  {
+    outputData <- run_SACmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
+  if(temperatureModel=="SQC")
+  {
+    outputData <- run_SQCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  if(temperatureModel=="STC")
+  {
+    outputData <- run_STCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else {
     cat("Model ", temperatureModel, " has not been implemented yet")
   }
 
