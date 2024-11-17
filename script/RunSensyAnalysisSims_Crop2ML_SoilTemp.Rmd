@@ -62,7 +62,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[4]
+temperatureModel <- modelsToRun[3]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -149,6 +149,7 @@ run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID,
   if(temperatureModel=="SQC")
   {
     outputData <- run_SQCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+  } else
   if(temperatureModel=="STC")
   {
     outputData <- run_STCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
@@ -259,7 +260,7 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousST <- onProcessState$ST
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -367,7 +368,7 @@ run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousST <- onProcessState$ST
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -436,7 +437,7 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousST <- onProcessState$SoilTemperatureByLayers
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -506,7 +507,7 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousST <- onProcessState$SoilTemperatureByLayers
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -660,7 +661,7 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousSoilTemperature <- onProcessState$soilTemperature
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -735,7 +736,7 @@ run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     previousDeepLayerT <- onProcessState$deepLayerT
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
@@ -800,7 +801,7 @@ run_STCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   previousST <- onProcessState$prev_temp_profile
 
     # set date in correct format
-    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
 
     # collect output data
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
