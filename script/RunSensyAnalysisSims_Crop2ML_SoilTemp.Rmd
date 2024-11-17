@@ -234,3 +234,77 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   return(outputData)
 }
 ```
+
+
+## Run the SiriusQuality model
+
+This function takes the set of parameters and inputs needed to run the soil temperature model from SiriusQuality, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation SiriusQuality model}
+
+run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # define some variables specific to a given run/simulation
+  lambda <-  2.454
+  paramA <- 0.5
+  paramB <- 1.8
+  paramC <- 0.49
+
+  # set model initialisation
+  initialState <- init_calculatesoiltemperature(
+    meanTAir=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
+    minTAir=weatherData$mint[firstDay],
+    lambda_=lambda,
+    meanAnnualAirTemp=siteData$TAV,
+    maxTAir=weatherData$maxt[firstDay])
+  
+  # collect some variables that are needed on CalculateModel
+  previousDeepLayerT <- initialState
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_soiltemperature(
+      meanTAir=(weatherData$mint[day]+weatherData$maxt[day])/2,
+      minTAir=weatherData$mint[day],
+      lambda_=lambda,
+      meanAnnualAirTemp=siteData$TAV,
+      deepLayerT=previousDeepLayerT,
+      heatFlux=0.0,  # to check
+      maxTAir=weatherData$maxt[day],
+      b=paramB,
+      c=paramC,
+      a=paramA,
+      dayLength=weatherData$DayLength[day])
+
+    # collect some variables that are needed for next iteration
+    previousDeepLayerT <- onProcessState$deepLayerT
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round((onProcessState$minTSoil=onProcessState$maxTSoil)/2, 6), rep(round(onProcessState$deepLayerT, 6),length(soilLayerData$Thickness))))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, c(round(onProcessState$minTSoil,6), rep("na", nrow(soilLayerData))))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, c(round(onProcessState$minTSoil,6),rep("na", nrow(soilLayerData))))
+  }
+  
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+
+```
