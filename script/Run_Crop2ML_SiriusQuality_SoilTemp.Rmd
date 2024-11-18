@@ -23,7 +23,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the BioMA-SWAT component
-source(here("Crop2ML", "SoilTemperatureComponent.r"))
+source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
 
 ```
 
