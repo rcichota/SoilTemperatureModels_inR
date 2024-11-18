@@ -25,7 +25,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the DSSAT-EPIC component
-source(here("Crop2ML", "STEMP_EPIC_Component.r"))
+source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 
 ```
 
@@ -71,7 +71,7 @@ currentSWC <- soilLayerData$LLC + (soilLayerData$DUL - soilLayerData$LLC)*fracti
 doWater <- "Y"     # soil water switch
 irrigDepth <- 0    # depth (amount) of irrigation
 coverBiomass <- 0  # biomass aboveground
-massMulch <- 0    # mass of surface mulch
+massMulch <- 0     # mass of surface mulch
 snowCover <- 0     # snow cover
 
 # create some variables to collect outputs of interest
