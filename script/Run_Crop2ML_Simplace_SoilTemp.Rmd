@@ -1,18 +1,18 @@
 ---
-title: "Run_Crop2ML_Simplace_Soil_Temperature"
+title: "Run_Crop2ML_Simplace_SoilTemp"
 author: "Jingjing Zhang"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 
-# Running a soil temperature model from Crop2ML in R - Simplace Soil_Temperature
+# Running a soil temperature model from Crop2ML in R - Simplace
 
 This is part of a series to demonstrate how to run in R environment a soil temperature model generated using Crop2ML.
 
 Crop2ML (Crop Modelling Meta Language) is a framework to translate components from and to specific modeling platforms. It provides a solution that can generate components automatically, based on a metalanguage, to simulate particular soil and/or plant processes. The framework was proposed by the Agricultural Model Exchange Initiative (AMEI) to facilitate the exchange and reuse of model components between different process-based modeling platforms used in agricultural and environmental research. More info at: https://crop2ml.org
 
-@@@ introduction to Simplace Model
+A version of the STMP soil temperature model from the SIMPLACE platform (https://www.simplace.net/) was converted into R functions using Crop2ML (working version as of Oct/2024). The scripts below show how to use the model stand-alone in R. This is a simple demonstration on how to set up and run the model for a very simple example, as well as record and graph some results from this example. More elaborate exercises and coupling with other models are possible but not in scope here.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -24,7 +24,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 
-# load the DSSAT-EPIC component
+# load the SIMPLACE component
 source(here("Crop2ML","Simplace_Soil_Temperature", "SoilTemperatureComponent.r"))
 
 ```
@@ -64,107 +64,83 @@ endDate <- "2000-12-31"
 firstDay <- match(startDate, weatherData$date)
 lastDay <- match(endDate, weatherData$date)
 
+# define some variables specific to a given run/simulation
+fractionPAW <- 0.75
+currentSWC <- soilLayerData$LLC + (soilLayerData$DUL - soilLayerData$LLC)*fractionPAW
+massMulch <- 0      # mass of crop residues plus aboveground biomass (g/m2)
+leafAreaIndex = 0   # leaf area index (m2/m2)
 
-iTempMax = weatherData$maxt[1]
-iTempMin = weatherData$mint[1]
-iRadiation = weatherData$radn[1]
-iRAIN = weatherData$rain[1]  
-cFirstDayMeanTemp = mean(iTempMax,iTempMin)
-
-# contant values: @@@ this need a recheck
-cAverageGroundTemperature = 5.69
-cAverageBulkDensity = 1.2
-cCarbonContent = 2.0
-Albedo = 0.5
-cDampingDepth = 6.0
-cSoilLayerDepth = c(0.1, 0.15, 0.25, 0.25, 0.25)
-
-#Other consents that is not in the input files
-iCropResidues = 30.0
-iPotentialSoilEvaporation =  0.6
-iLeafAreaIndex = 0.1
-iSoilTempArray = c(2.6,5.4,8.6,12.2,11.4,10.6,9.8,9.0)
-cInitialAgeOfSnow = 0
-cInitialSnowWaterContent = 0.0
-cSnowIsolationFactorA = 2.3
-cSnowIsolationFactorB = 0.22
-cAVT = 9.0
-cABD = 1.4
-iSoilWaterContent = 0.3
-
+dampingDepth <- 6.0          # damping depth of soil
+snowIsolationFactorA = 2.3   # static part of the snow isolation index
+snowIsolationFactorB = 0.22  # dynamic part of the snow isolation index
 
 # create some variables to collect outputs of interest
 simulatedDate <- c()
 simulatedDepth <- c()
 simulatedTemperature <- c()
 
-
 # set model initialisation
 snow_init = init_snowcovercalculator(
-                                    cCarbonContent,
-                                    cInitialAgeOfSnow,
-                                    cInitialSnowWaterContent,
-                                    Albedo,
-                                    cSnowIsolationFactorA,
-                                    cSnowIsolationFactorB,
-                                    iTempMax,
-                                    iTempMin,
-                                    iRadiation,
-                                    iRAIN,
-                                    iCropResidues,
-                                    iPotentialSoilEvaporation,
-                                    iLeafAreaIndex,
-                                    iSoilTempArray)
+  cCarbonContent=soilLayerData$OC[1],
+  cInitialAgeOfSnow=0,
+  cInitialSnowWaterContent=0,
+  Albedo=siteData$SAlbedo,
+  cSnowIsolationFactorA=snowIsolationFactorA,
+  cSnowIsolationFactorB=snowIsolationFactorB,
+  iTempMax=weatherData$maxt[1],
+  iTempMin=weatherData$mint[1],
+  iRadiation=weatherData$radn[1],
+  iRAIN=weatherData$rain[1],
+  iCropResidues=massMulch,
+  iPotentialSoilEvaporation=weatherData$PotSoilEvap[1],
+  iLeafAreaIndex=leafAreaIndex,
+  iSoilTempArray=rep(siteData$TAV, nrow(soilLayerData)))
 
-stmp_init = init_stmpsimcalculator(cSoilLayerDepth,
-                                   cFirstDayMeanTemp,
-                                   cAVT,cABD,
-                                   cDampingDepth,
-                                   iSoilWaterContent,
-                                   iSoilSurfaceTemperature)
-
+stmp_init = init_stmpsimcalculator(
+  cSoilLayerDepth=soilLayerData$Thickness/1000.0,
+  cFirstDayMeanTemp=mean(weatherData$mint[1],weatherData$maxt[1]),
+  cAVT=siteData$TAV,
+  cABD=siteData$SMeanBD,
+  cDampingDepth=dampingDepth,
+  iSoilWaterContent=sum(currentSWC*soilLayerData$Thickness),
+  iSoilSurfaceTemperature)
 
 # collect some variables that are needed for next iteration
-# from initial steps
 previous_SnowWaterContent = snow_init$SnowWaterContent
 previous_SoilSurfaceTemperature = snow_init$SoilSurfaceTemperature
 previous_AgeOfSnow = snow_init$AgeOfSnow
 previous_SoilTempArray = stmp_init$SoilTempArray
 previous_rSoilTempArrayRate = stmp_init$rSoilTempArrayRate
 
-
 # run model between two days (dates in weather file)
-for (day in firstDay:lastDay){
-  onProcessState <- model_soiltemperature (cCarbonContent,
-                                       cAlbedo = Albedo,
-                                       iAirTemperatureMax = weatherData$maxt[day],
-                                       iAirTemperatureMin = weatherData$mint[day],
-                                       iGlobalSolarRadiation = weatherData$radn[day],
-                                       iRAIN = weatherData$rain[day],
-                                       iCropResidues,
-                                       iPotentialSoilEvaporation,
-                                       iLeafAreaIndex,
-                                       SoilTempArray = previous_SoilTempArray,
-                                       cSoilLayerDepth, 
-                                       cFirstDayMeanTemp,
-                                       cAverageGroundTemperature,
-                                       cAverageBulkDensity,
-                                       cDampingDepth,
-                                       iSoilWaterContent,
-                                       pInternalAlbedo = snow_init$pInternalAlbedo, # not one of the loop onProcessState output, so use stem_init value @@@ check
-                                       SnowWaterContent = previous_SnowWaterContent,
-                                       SoilSurfaceTemperature = previous_SoilSurfaceTemperature,
-                                       AgeOfSnow = previous_AgeOfSnow,
-                                       rSoilTempArrayRate = previous_rSoilTempArrayRate,
-                                       pSoilLayerDepth = stmp_init$pSoilLayerDepth) # not one of the loop onProcessState output, so use stem_init value @@@ check)
-  
-  # collect some variables that are needed for next iteration @@@ check if those are correct for the iterative variables
+for (day in firstDay:lastDay)
+{
+  onProcessState <- model_soiltemperature (
+    cCarbonContent=soilLayerData$OC[1],
+    cAlbedo=siteData$SAlbedo,
+    iAirTemperatureMax = weatherData$maxt[day],
+    iAirTemperatureMin = weatherData$mint[day],
+    iGlobalSolarRadiation = weatherData$radn[day],
+    iRAIN = weatherData$rain[day],
+    iCropResidues=massMulch,
+    iPotentialSoilEvaporation=weatherData$PotSoilEvap[day],
+    iLeafAreaIndex=leafAreaIndex,
+    SoilTempArray=previous_SoilTempArray,
+    cSoilLayerDepth=soilLayerData$Thickness/1000.0,
+    cFirstDayMeanTemp=mean(weatherData$mint,weatherData$maxt),
+    cAverageGroundTemperature=siteData$TAV,
+    cAverageBulkDensity=siteData$SMeanBD,
+    cDampingDepth=dampingDepth,
+    iSoilWaterContent=sum(currentSWC*soilLayerData$Thickness),
+    pInternalAlbedo=snow_init$pInternalAlbedo,
+    SnowWaterContent = previous_SnowWaterContent,
+    SoilSurfaceTemperature=previous_SoilSurfaceTemperature,
+    AgeOfSnow=previous_AgeOfSnow,
+    rSoilTempArrayRate=previous_rSoilTempArrayRate,
+    pSoilLayerDepth=stmp_init$pSoilLayerDepth)
+
   previous_SoilSurfaceTemperature <- onProcessState$SoilSurfaceTemperature
-  previous_SnowIsolationIndex <- onProcessState$SnowIsolationIndex # not in the loop
   previous_SnowWaterContent <- onProcessState$SnowWaterContent
-  previous_rSnowWaterContentRate <- onProcessState$rSnowWaterContentRate # not in the loop
-  previous_rSoilSurfaceTemperatureRate <- onProcessState$rSoilSurfaceTemperatureRate # not in the loop
-  previous_rAgeOfSnowRate <- onProcessState$rAgeOfSnowRate # not in the loop
   previous_AgeOfSnow <- onProcessState$AgeOfSnow
   previous_SoilTempArray <- onProcessState$SoilTempArray
   previous_rSoilTempArrayRate <- onProcessState$rSoilTempArrayRate

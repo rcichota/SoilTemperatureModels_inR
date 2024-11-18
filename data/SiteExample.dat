@@ -1,4 +1,4 @@
-Basic info on site and soil type - example of data (TAV: long-term average air temperature, TAMP: long-term amplitude in mean air temperature, SAlbedo: soil albedo, SMDB: mean soil bulk density)
+Basic info on site and soil type - example of data (TAV: long-term average air temperature, TAMP: long-term amplitude in mean air temperature, SAlbedo: soil albedo, SMeanBD: mean soil bulk density)
 ()          (degrees)   (degrees)        (m)    (oC)    (oC)        ()  (g/cm3)
-SiteName     Latitude   Longitude   Altitude     TAV    TAMP   SAlbedo     SMDB
+SiteName     Latitude   Longitude   Altitude     TAV    TAMP   SAlbedo  SMeanBD
 Queenstown    -45.125     168.375      330.0    5.69   11.96      0.16     1.20
