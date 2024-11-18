@@ -25,7 +25,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the STICS component
-source(here("Crop2ML", "soil_tempComponent.r"))
+source(here("Crop2ML", "Stics_soil_temperature", "soil_tempComponent.r"))
 
 ```
 
