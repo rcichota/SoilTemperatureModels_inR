@@ -1,0 +1,213 @@
+---
+title: "Run_Crop2ML_Simplace_Soil_Temperature"
+author: "Jingjing Zhang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# Running a soil temperature model from Crop2ML in R - Simplace Soil_Temperature
+
+This is part of a series to demonstrate how to run in R environment a soil temperature model generated using Crop2ML.
+
+Crop2ML (Crop Modelling Meta Language) is a framework to translate components from and to specific modeling platforms. It provides a solution that can generate components automatically, based on a metalanguage, to simulate particular soil and/or plant processes. The framework was proposed by the Agricultural Model Exchange Initiative (AMEI) to facilitate the exchange and reuse of model components between different process-based modeling platforms used in agricultural and environmental research. More info at: https://crop2ml.org
+
+@@@ introduction to Simplace Model
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load some libraries
+library(here)
+library(gsubfn)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# load the DSSAT-EPIC component
+source(here("Crop2ML","Simplace_Soil_Temperature", "SoilTemperatureComponent.r"))
+
+```
+
+## Read in parameters and basic data
+
+The soil temperature requires a number of soil parameters and input data (weather). These are read in from test files.
+Note that some model specific parameters are set in here manually...
+
+```{r read files}
+
+# read general site info (weather and soil type summary)
+siteFilePath <- here("data", "SiteExample.dat")
+siteData <- read.table(siteFilePath, skip = 2, header = TRUE)
+
+# get the weather data (daily values)
+weatherFilePath <- here("data", "WeatherDataExample.dat")
+weatherData <- read.table(weatherFilePath, skip = 2, header = TRUE)
+
+# get soil profile data
+soilLayerFilePath <- here("data", "SoilLayersExample.dat")
+soilLayerData <- read.table(soilLayerFilePath, skip = 2, header = TRUE)
+
+```
+
+## Run the model over a number of dates
+
+Firstly the dates to start and end the period over which the simulation will run are defined, then the soil water content and some model specific variables/parameters. Finally the model is run (loop over the weather data)
+Here we are collecting a few variables of interest, putting in a data.frame with names and formats wanted (assumed), and then saving it to a file in the outputs folder.
+The example simulation runs over one year, the data collected consists of soil temperature for the various depths (as defined in soilLayerData) for each simulated date.
+
+```{r run simulation}
+
+# set the dates between which the model will run over
+startDate <- "2000-01-01"
+endDate <- "2000-12-31"
+firstDay <- match(startDate, weatherData$date)
+lastDay <- match(endDate, weatherData$date)
+
+
+iTempMax = weatherData$maxt[1]
+iTempMin = weatherData$mint[1]
+iRadiation = weatherData$radn[1]
+iRAIN = weatherData$rain[1]  
+cFirstDayMeanTemp = mean(iTempMax,iTempMin)
+
+# contant values: @@@ this need a recheck
+cAverageGroundTemperature = 5.69
+cAverageBulkDensity = 1.2
+cCarbonContent = 2.0
+Albedo = 0.5
+cDampingDepth = 6.0
+cSoilLayerDepth = c(0.1, 0.15, 0.25, 0.25, 0.25)
+
+#Other consents that is not in the input files
+iCropResidues = 30.0
+iPotentialSoilEvaporation =  0.6
+iLeafAreaIndex = 0.1
+iSoilTempArray = c(2.6,5.4,8.6,12.2,11.4,10.6,9.8,9.0)
+cInitialAgeOfSnow = 0
+cInitialSnowWaterContent = 0.0
+cSnowIsolationFactorA = 2.3
+cSnowIsolationFactorB = 0.22
+cAVT = 9.0
+cABD = 1.4
+iSoilWaterContent = 0.3
+
+
+# create some variables to collect outputs of interest
+simulatedDate <- c()
+simulatedDepth <- c()
+simulatedTemperature <- c()
+
+
+# set model initialisation
+snow_init = init_snowcovercalculator(
+                                    cCarbonContent,
+                                    cInitialAgeOfSnow,
+                                    cInitialSnowWaterContent,
+                                    Albedo,
+                                    cSnowIsolationFactorA,
+                                    cSnowIsolationFactorB,
+                                    iTempMax,
+                                    iTempMin,
+                                    iRadiation,
+                                    iRAIN,
+                                    iCropResidues,
+                                    iPotentialSoilEvaporation,
+                                    iLeafAreaIndex,
+                                    iSoilTempArray)
+
+stmp_init = init_stmpsimcalculator(cSoilLayerDepth,
+                                   cFirstDayMeanTemp,
+                                   cAVT,cABD,
+                                   cDampingDepth,
+                                   iSoilWaterContent,
+                                   iSoilSurfaceTemperature)
+
+
+# collect some variables that are needed for next iteration
+# from initial steps
+previous_SnowWaterContent = snow_init$SnowWaterContent
+previous_SoilSurfaceTemperature = snow_init$SoilSurfaceTemperature
+previous_AgeOfSnow = snow_init$AgeOfSnow
+previous_SoilTempArray = stmp_init$SoilTempArray
+previous_rSoilTempArrayRate = stmp_init$rSoilTempArrayRate
+
+
+# run model between two days (dates in weather file)
+for (day in firstDay:lastDay){
+  onProcessState <- model_soiltemperature (cCarbonContent,
+                                       cAlbedo = Albedo,
+                                       iAirTemperatureMax = weatherData$maxt[day],
+                                       iAirTemperatureMin = weatherData$mint[day],
+                                       iGlobalSolarRadiation = weatherData$radn[day],
+                                       iRAIN = weatherData$rain[day],
+                                       iCropResidues,
+                                       iPotentialSoilEvaporation,
+                                       iLeafAreaIndex,
+                                       SoilTempArray = previous_SoilTempArray,
+                                       cSoilLayerDepth, 
+                                       cFirstDayMeanTemp,
+                                       cAverageGroundTemperature,
+                                       cAverageBulkDensity,
+                                       cDampingDepth,
+                                       iSoilWaterContent,
+                                       pInternalAlbedo = snow_init$pInternalAlbedo, # not one of the loop onProcessState output, so use stem_init value @@@ check
+                                       SnowWaterContent = previous_SnowWaterContent,
+                                       SoilSurfaceTemperature = previous_SoilSurfaceTemperature,
+                                       AgeOfSnow = previous_AgeOfSnow,
+                                       rSoilTempArrayRate = previous_rSoilTempArrayRate,
+                                       pSoilLayerDepth = stmp_init$pSoilLayerDepth) # not one of the loop onProcessState output, so use stem_init value @@@ check)
+  
+  # collect some variables that are needed for next iteration @@@ check if those are correct for the iterative variables
+  previous_SoilSurfaceTemperature <- onProcessState$SoilSurfaceTemperature
+  previous_SnowIsolationIndex <- onProcessState$SnowIsolationIndex # not in the loop
+  previous_SnowWaterContent <- onProcessState$SnowWaterContent
+  previous_rSnowWaterContentRate <- onProcessState$rSnowWaterContentRate # not in the loop
+  previous_rSoilSurfaceTemperatureRate <- onProcessState$rSoilSurfaceTemperatureRate # not in the loop
+  previous_rAgeOfSnowRate <- onProcessState$rAgeOfSnowRate # not in the loop
+  previous_AgeOfSnow <- onProcessState$AgeOfSnow
+  previous_SoilTempArray <- onProcessState$SoilTempArray
+  previous_rSoilTempArrayRate <- onProcessState$rSoilTempArrayRate
+  
+  # collect output data
+  simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData) + 1))
+  simulatedDepth <- c(simulatedDepth, c(0.0, (soilLayerData$LayerTop+soilLayerData$LayerBot)/2))
+  simulatedTemperature <- c(simulatedTemperature, c(round(onProcessState$SoilSurfaceTemperature, 6)))
+}
+
+# prepare the output table
+outputData <- data.frame(simulatedDate, simulatedDepth, simulatedTemperature)
+colnames(outputData) <- c("Date", "Depth", "Temperature")
+
+# save the outputs
+thisModel <- "Simplace_Soil_temperature"
+outputFileName <- paste0("OutputDataExample_", thisModel, ".csv")
+outputFilePath <- here("outputs", outputFileName)
+write.table(outputData, outputFilePath, sep=",", row.names=FALSE, quote=FALSE)
+
+```
+
+## Graph some results
+
+Using the data.frame created above (otherwise one has to read in the file saved), two graphs are created to check the model and demonstrate how the data can be presented. The first graph shows the time series of simulated temperature at three depths; the second graph shows the temperature simulated over the profile (all depth) for four dates along the year.
+
+```{r graphs}
+
+timeSeriesTemperature <- outputData %>%
+  filter(Depth==0 | Depth==100 | Depth==1125) %>%
+  mutate_at(vars(Depth), factor)
+
+ggplot(data=timeSeriesTemperature, aes(x=as.Date(Date), y=Temperature, color=Depth)) +
+  geom_line() +
+  labs(title = "Simulated temperature over time at different depths", y = "Temperature (oC)", x = "Date")
+
+
+profileTemperature <- outputData %>%
+  filter(Date == "2000-01-01" | Date == "2000-04-01" | Date == "2000-07-01" | Date == "2000-10-01")
+
+ggplot(data=profileTemperature, aes(x=Temperature, y=Depth, color=Date)) +
+  geom_path() +
+  scale_y_reverse() +
+  labs(title = "Simulated temperature profile at different dates", y = "Depth (mm)", x = "Temperature (oC)")
+
+```
