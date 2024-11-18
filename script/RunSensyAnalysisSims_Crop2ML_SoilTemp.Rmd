@@ -62,7 +62,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[3]
+temperatureModel <- modelsToRun[4]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -182,10 +182,13 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   simulatedSoilTempMin <- c()
   simulatedSoilTempMax <- c()
 
+ # define some variables specific to a given run/simulation
+  doWater <- "Y"     # soil water switch
+  
   # set model initialisation
   initialState <- init_stemp_epic(
     NL=nrow(soilLayerData),
-    ISWWAT="Y",
+    ISWWAT=doWater,
     BD=soilLayerData$SLBDM,
     DLAYR=soilLayerData$THICK,
     DS=soilLayerData$SLLB,
@@ -245,7 +248,7 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
       SRFTEMP=previousSRFTEMP,
       ST=previousST,
       NL=nrow(soilLayerData),
-      ISWWAT="Y",
+      ISWWAT=doWater,
       CUMDPT=previousCUMDPT)
 
     # collect some variables that are needed for next iteration
@@ -286,6 +289,9 @@ This function takes the set of parameters and inputs needed to run the native so
 
 ```{r runSimulation DSSAT native model}
 
+soilWaterData <- soilWaterToRun
+biomassData <- biomassToRun
+
 run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -303,21 +309,21 @@ run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   initialState <- init_stemp(
     NL=nrow(soilLayerData),
     ISWWAT=doWater,
-    BD=soilLayerData$BD,
-    DLAYR=soilLayerData$Thickness,
-    DS=soilLayerData$LayerBot,
-    DUL=soilLayerData$DUL,
-    LL=soilLayerData$LLC,
+    BD=soilLayerData$SLBDM,
+    DLAYR=soilLayerData$THICK,
+    DS=soilLayerData$SLLB,
+    DUL=soilLayerData$SLDUL,
+    LL=soilLayerData$SLLL,
     NLAYR=nrow(soilLayerData),
-    MSALB=siteData$SAlbedo,
-    SRAD=weatherData$radn[firstDay],
-    SW=currentSWC,
-    TAVG=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
-    TMAX=weatherData$maxt[firstDay],
-    XLAT=siteData$Latitude,
+    MSALB=soilGeneralData$SALB,
+    SRAD=weatherData$SRAD[1],
+    SW=soilWaterData,
+    TAVG=weatherData$T2M[1],
+    TMAX=weatherData$TMAX[1],
+    XLAT=siteData$XLAT,
     TAV=siteData$TAV,
     TAMP=siteData$TAMP,
-    DOY=yday(as.Date(weatherData$date[firstDay])))
+    DOY=yday(as.Date(as.numeric(substr(weatherData$DATE[1], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[1], 1, 4), "-01-01")))))
 
   # collect some variables that are needed on CalculateModel
   previousCUMDPT <- initialState$CUMDPT
@@ -332,31 +338,31 @@ run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_stemp_(
-      TMAX=weatherData$maxt[day],
-      MSALB=siteData$SAlbedo,
+      TMAX=weatherData$TMAX[day],
+      MSALB=soilGeneralData$SALB,
       HDAY=initialState$HDAY,
       NL=nrow(soilLayerData),
       SRFTEMP=previousSRFTEMP,
-      LL=soilLayerData$LLC,
+      LL=soilLayerData$SLLL,
       NLAYR=nrow(soilLayerData),
-      DS=soilLayerData$LayerBot,
+      DS=soilLayerData$SLLB,
       ST=previousST,
-      SRAD=weatherData$radn[day],
+      SRAD=weatherData$SRAD[day],
       TAMP=siteData$TAMP,
-      DLAYR =soilLayerData$Thickness,
+      DLAYR=soilLayerData$THICK,
       TMA=previousTMA,
       TDL=previousTDL,
       ISWWAT=doWater,
       CUMDPT=previousCUMDPT,
-      TAVG=(weatherData$mint[day]+weatherData$maxt[day])/2,
-      BD=soilLayerData$BD,
-      SW=currentSWC,
+      TAVG=weatherData$T2M[day],
+      BD=soilLayerData$SLBDM,
+      SW=soilWaterData,
       ATOT=previousATOT,
       TAV=siteData$TAV,
-      XLAT=siteData$Latitude,
-      DUL=soilLayerData$DUL,
+      XLAT=siteData$XLAT,
+      DUL=soilLayerData$SLDUL,
       DSMID=previousDSMID,
-      DOY=yday(as.Date(weatherData$date[day])))
+      DOY=yday(as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))))
   
     # collect some variables that are needed for next iteration
     previousCUMDPT <- onProcessState$CUMDPT
