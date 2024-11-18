@@ -25,7 +25,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the BioMA-Parton component
-source(here("Crop2ML", "SurfacePartonSoilSWATCComponent.r"))
+source(here("Crop2ML", "BiomaSurfacePartonSoilSWATC", "SurfacePartonSoilSWATCComponent.r"))
 
 ```
 
