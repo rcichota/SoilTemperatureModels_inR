@@ -137,7 +137,11 @@ for (day in firstDay:lastDay)
     SoilSurfaceTemperature=previous_SoilSurfaceTemperature,
     AgeOfSnow=previous_AgeOfSnow,
     rSoilTempArrayRate=previous_rSoilTempArrayRate,
-    pSoilLayerDepth=stmp_init$pSoilLayerDepth)
+    pSoilLayerDepth=stmp_init$pSoilLayerDepth,
+    cInitialAgeOfSnow=0,
+    cInitialSnowWaterContent=0,
+    cSnowIsolationFactorA=snowIsolationFactorA,
+    cSnowIsolationFactorB=snowIsolationFactorB)
 
   previous_SoilSurfaceTemperature <- onProcessState$SoilSurfaceTemperature
   previous_SnowWaterContent <- onProcessState$SnowWaterContent

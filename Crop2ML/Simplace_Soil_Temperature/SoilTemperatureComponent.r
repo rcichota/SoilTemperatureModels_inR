@@ -25,7 +25,11 @@ model_soiltemperature <- function (cCarbonContent,
          SoilSurfaceTemperature,
          AgeOfSnow,
          rSoilTempArrayRate,
-         pSoilLayerDepth){
+         pSoilLayerDepth,
+         cInitialAgeOfSnow,
+         cInitialSnowWaterContent,
+         cSnowIsolationFactorA,
+         cSnowIsolationFactorB){
     #'- Name: SoilTemperature -Version: 001, -Time step: 1
     #'- Description:
     #'            * Title: SoilTemperature model
