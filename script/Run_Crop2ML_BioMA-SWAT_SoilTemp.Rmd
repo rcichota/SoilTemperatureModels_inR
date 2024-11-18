@@ -25,7 +25,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the BioMA-SWAT component
-source(here("Crop2ML", "SurfaceSWATSoilSWATCComponent.r"))
+source(here("Crop2ML", "BiomaSurfaceSWATSoilSWATC", "SurfaceSWATSoilSWATCComponent.r"))
 
 ```
 
