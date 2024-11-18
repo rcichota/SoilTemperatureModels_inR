@@ -25,7 +25,7 @@ library(lubridate)
 library(ggplot2)
 
 # load the DSSAT native component
-source(here("Crop2ML", "STEMP_Component.r"))
+source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
 
 ```
 

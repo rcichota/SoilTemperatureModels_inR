@@ -25,10 +25,11 @@ library(lubridate)
 library(ggplot2)
 
 # load DSSAT-EPIC component
-source(here("Crop2ML", "STEMP_EPIC_Component.r"))
+source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 
 # load the DSSAT native component
-source(here("Crop2ML", "STEMP_Component.r"))
+source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
+
 
 ```
 
