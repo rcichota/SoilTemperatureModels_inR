@@ -28,7 +28,7 @@ library(ggplot2)
 source(here("Crop2ML", "SoilTemperatureCompComponent.r"))
 
 # load auxiliary functions
-source(here("auxiliary", "MapLayerValues.R"))
+source(here("auxiliary", "Monica_SoilTemp", "MapLayerValues.R"))
 
 ```
 
