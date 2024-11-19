@@ -39,6 +39,9 @@ source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
 # load the SiriusQuality component
 source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
 
+# load the STICS component
+source(here("Crop2ML", "Stics_soil_temperature", "soil_tempComponent.r"))
+
 ```
 
 ## Experiment setup
@@ -71,7 +74,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[8]
+temperatureModel <- modelsToRun[9]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -704,9 +707,6 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation SiriusQuality model}
 
-soilWaterData <- soilWaterToRun
-biomassData <- biomassToRun
-
 run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -738,7 +738,7 @@ run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_soiltemperature(
-      meanTAir=(weatherData$TMIN[day]+weatherData$TMAX[day])/2,
+      meanTAir=weatherData$T2M[day],
       minTAir=weatherData$TMIN[day],
       lambda_=lambda,
       meanAnnualAirTemp=siteData$TAV,
@@ -793,26 +793,27 @@ run_STCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   # set model initialisation
   initialState <- init_temp_profile(
-    min_air_temp=weatherData$mint[firstDay],
-    air_temp_day1=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
-    layer_thick=soilLayerData$Thickness/10.0)
+    min_air_temp=weatherData$TMIN[1],
+    air_temp_day1=weatherData$T2M[1],
+    layer_thick=soilLayerData$THICK)
 
   # collect some variables that are needed on CalculateModel
   previousCanopy_temp <- initialState$prev_canopy_temp
   previousST <- initialState$prev_temp_profile
+
   # run model for the duration of the weather file
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_soil_temp(
-      min_temp=weatherData$mint[day],
-      max_temp=weatherData$maxt[day],
+      min_temp=weatherData$TMIN[day],
+      max_temp=weatherData$TMAX[day],
       prev_temp_profile=previousST,
       prev_canopy_temp=previousCanopy_temp,
-      min_air_temp=weatherData$mint[day],
-      air_temp_day1=weatherData$mint[firstDay],
-      layer_thick=soilLayerData$Thickness/10.0,
-      min_canopy_temp=weatherData$mint[day],
-      max_canopy_temp=weatherData$maxt[day])
+      min_air_temp=weatherData$TMIN[day],
+      air_temp_day1=weatherData$T2M[day],
+      layer_thick=soilLayerData$THICK,
+      min_canopy_temp=weatherData$TMIN[day],
+      max_canopy_temp=weatherData$TMAX[day])
 
     # collect some variables that are needed for next iteration
   previousCanopy_temp <- onProcessState$prev_canopy_temp
