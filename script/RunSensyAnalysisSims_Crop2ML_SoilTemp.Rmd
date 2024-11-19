@@ -24,12 +24,14 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 
+# load the BioMA-Parton component
+source(here("Crop2ML", "BiomaSurfacePartonSoilSWATC", "SurfacePartonSoilSWATCComponent.r"))
+
 # load DSSAT-EPIC component
 source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 
 # load the DSSAT native component
 source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
-
 
 ```
 
@@ -56,14 +58,14 @@ The weather data and soil parameters are given in text files (sourced and format
 ```{r experimentSettings}
 
 # define the treatment levels for the experiment (IDs follow the order of sites, models, etc. given above)
-modelsToRun <- c("APC", "SWC", "DEC", "DSC", "MOC", "SAC", "SQC", "STC")
+modelsToRun <- c("APC", "PSC", "SWC", "DEC", "DSC", "MOC", "SAC", "SQC", "STC")
 locationIDsToRun <- c("USGA", "DEMU", "COCA", "FRLU", "USMA", "FRMO", "CAQC")
 soilsToRun <- c("SICL", "SILO", "SALO", "SAND")
 laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[4]
+temperatureModel <- modelsToRun[2]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -271,16 +273,17 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
     simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SRFTEMP, 6), round(onProcessState$ST, 6)))
-    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
     simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
   }
 
   # prepare the output table
-  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)
 }
+
 ```
 
 
@@ -289,9 +292,6 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 This function takes the set of parameters and inputs needed to run the native soil temperature model from DSSAT, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
 
 ```{r runSimulation DSSAT native model}
-
-soilWaterData <- soilWaterToRun
-biomassData <- biomassToRun
 
 run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
@@ -382,12 +382,12 @@ run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
     simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SRFTEMP, 6), round(onProcessState$ST, 6)))
-    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
     simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
   }
 
   # prepare the output table
-  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)
@@ -402,6 +402,9 @@ This function takes the set of parameters and inputs needed to run the Parton so
 
 ```{r runSimulation BioMA-Parton model}
 
+soilWaterData <- soilWaterToRun
+biomassData <- biomassToRun
+
 run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -414,12 +417,12 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   # set model initialisation
   initialState <- init_soiltemperatureswat(
-    VolumetricWaterContent=currentSWC,
-    LayerThickness=soilLayerData$Thickness/1000.0,
+    VolumetricWaterContent=soilWaterData,
+    LayerThickness=soilLayerData$THICK/1000.0,
     LagCoefficient=0.8,
     AirTemperatureAnnualAverage=siteData$TAV,
-    BulkDensity=soilLayerData$BD,
-    SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0)
+    BulkDensity=soilLayerData$SLBDM,
+    SoilProfileDepth=sum(soilLayerData$THICK)/1000.0)
 
   # collect some variables that are needed on CalculateModel
   previousST <- initialState$SoilTemperatureByLayers
@@ -428,17 +431,18 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_surfacepartonsoilswatc(
-      DayLength=weatherData$daylength[day],
-      GlobalSolarRadiation=weatherData$radn[day],
-      AboveGroundBiomass=coverBiomass,
-      AirTemperatureMinimum=weatherData$mint[day],
-      AirTemperatureMaximum=weatherData$maxt[day],
-      LayerThickness=soilLayerData$Thickness/1000.0,
-      BulkDensity=soilLayerData$BD,
-      SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0,
+      DayLength=weatherData$DAYLD [day],
+      GlobalSolarRadiation=weatherData$SRAD[day],
+      AboveGroundBiomass=biomassData,
+      AirTemperatureMinimum=weatherData$TMIN[day],
+      AirTemperatureMaximum=weatherData$TMAX[day],
+      LayerThickness=soilLayerData$THICK/100.0,
+      BulkDensity=soilLayerData$SLBDM,
+      SoilProfileDepth=sum(soilLayerData$THICK)/100.0,
       AirTemperatureAnnualAverage=siteData$TAV,
-      VolumetricWaterContent=currentSWC,
-      LagCoefficient=0.8)
+      VolumetricWaterContent=soilWaterData,
+      LagCoefficient=0.8,
+      preSoilTemperatureByLayers=previousST)
 
     # collect some variables that are needed for next iteration
     previousST <- onProcessState$SoilTemperatureByLayers
@@ -451,12 +455,12 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
     simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SurfaceSoilTemperature, 6), round(onProcessState$SoilTemperatureByLayers, 6)))
-    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
-    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, c(round(onProcessState$SurfaceTemperatureMaximum, 6), rep("na", nrow(soilLayerData))))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, c(round(onProcessState$SurfaceTemperatureMinimum, 6), rep("na", nrow(soilLayerData))))
   }
 
   # prepare the output table
-  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)

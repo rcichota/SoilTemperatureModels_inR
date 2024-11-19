@@ -81,14 +81,14 @@ model_surfacetemperatureparton <- function (DayLength,
     #'                          ** max : 60
     #'                          ** min : -60
     #'                          ** unit : degC
-    _AGB <- AboveGroundBiomass / 10000
-    _AirTMax <- AirTemperatureMaximum
-    _AirTmin <- AirTemperatureMinimum
-    _SolarRad <- GlobalSolarRadiation
-    if (_AGB > 0.15)
+    AGB <- AboveGroundBiomass / 10000
+    AirTMax <- AirTemperatureMaximum
+    AirTmin <- AirTemperatureMinimum
+    SolarRad <- GlobalSolarRadiation
+    if (AGB > 0.15)
     {
-        SurfaceTemperatureMaximum <- _AirTMax + ((24 * (1 - exp(-0.038 * _SolarRad)) + (0.35 * _AirTMax)) * (exp(-4.8 * _AGB) - 0.13))
-        SurfaceTemperatureMinimum <- _AirTmin + (6 * _AGB) - 1.82
+        SurfaceTemperatureMaximum <- AirTMax + ((24 * (1 - exp(-0.038 * SolarRad)) + (0.35 * AirTMax)) * (exp(-4.8 * AGB) - 0.13))
+        SurfaceTemperatureMinimum <- AirTmin + (6 * AGB) - 1.82
     }
     else
     {
@@ -98,7 +98,7 @@ model_surfacetemperatureparton <- function (DayLength,
     SurfaceSoilTemperature <- 0.41 * SurfaceTemperatureMaximum + (0.59 * SurfaceTemperatureMinimum)
     if (DayLength != as.double(0))
     {
-        SurfaceSoilTemperature <- DayLength / 24 * _AirTMax + ((1 - (DayLength / 24)) * _AirTmin)
+        SurfaceSoilTemperature <- DayLength / 24 * AirTMax + ((1 - (DayLength / 24)) * AirTmin)
     }
     return (list ("SurfaceTemperatureMinimum" = SurfaceTemperatureMinimum,"SurfaceTemperatureMaximum" = SurfaceTemperatureMaximum,"SurfaceSoilTemperature" = SurfaceSoilTemperature))
 }

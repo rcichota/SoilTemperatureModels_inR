@@ -16,7 +16,8 @@ model_surfacepartonsoilswatc <- function (DayLength,
          SoilProfileDepth,
          AirTemperatureAnnualAverage,
          VolumetricWaterContent,
-         LagCoefficient){
+         LagCoefficient,
+         preSoilTemperatureByLayers){
     #'- Name: SurfacePartonSoilSWATC -Version: 001, -Time step: 1
     #'- Description:
     #'            * Title: SurfacePartonSoilSWATC model
@@ -158,8 +159,9 @@ model_surfacepartonsoilswatc <- function (DayLength,
     #'                          ** max : 60
     #'                          ** min : -60
     #'                          ** unit : degC
-    SoilTemperatureByLayers<- vector()
-    list[SurfaceTemperatureMinimum, SurfaceTemperatureMaximum, SurfaceSoilTemperature] <- model_surfacetemperatureparton(DayLength, AirTemperatureMaximum, AirTemperatureMinimum, AboveGroundBiomass, GlobalSolarRadiation)
+  #SoilTemperatureByLayers<- vector()
+  SoilTemperatureByLayers<- preSoilTemperatureByLayers
+  list[SurfaceTemperatureMinimum, SurfaceTemperatureMaximum, SurfaceSoilTemperature] <- model_surfacetemperatureparton(DayLength, AirTemperatureMaximum, AirTemperatureMinimum, AboveGroundBiomass, GlobalSolarRadiation)
     SoilTemperatureByLayers <- model_soiltemperatureswat(VolumetricWaterContent, SurfaceSoilTemperature, LayerThickness, LagCoefficient, SoilTemperatureByLayers, AirTemperatureAnnualAverage, BulkDensity, SoilProfileDepth)
     return (list ("SurfaceTemperatureMinimum" = SurfaceTemperatureMinimum,"SurfaceTemperatureMaximum" = SurfaceTemperatureMaximum,"SurfaceSoilTemperature" = SurfaceSoilTemperature,"SoilTemperatureByLayers" = SoilTemperatureByLayers))
 }

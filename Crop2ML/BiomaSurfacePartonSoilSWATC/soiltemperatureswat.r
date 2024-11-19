@@ -11,7 +11,7 @@ init_soiltemperatureswat <- function (VolumetricWaterContent,
     for( i in seq(0, length(LayerThickness)-1, 1)){
         SoilTemperatureByLayers[i+1] <- as.double(15)
     }
-    return( SoilTemperatureByLayers)
+    return(list("SoilTemperatureByLayers" = SoilTemperatureByLayers))
 }
 
 model_soiltemperatureswat <- function (VolumetricWaterContent,
@@ -116,34 +116,35 @@ model_soiltemperatureswat <- function (VolumetricWaterContent,
     #'                          ** max : 60
     #'                          ** min : -60
     #'                          ** unit : degC
-    _SoilProfileDepthmm <- SoilProfileDepth * 1000
-    _TotalWaterContentmm <- as.double(0)
+    SoilProfileDepthmm <- SoilProfileDepth * 1000
+    TotalWaterContentmm <- as.double(0)
     for( i in seq(0, length(LayerThickness)-1, 1)){
-        _TotalWaterContentmm <- _TotalWaterContentmm + (VolumetricWaterContent[i+1] * LayerThickness[i+1])
+        TotalWaterContentmm <- TotalWaterContentmm + (VolumetricWaterContent[i+1] * LayerThickness[i+1])
     }
-    _TotalWaterContentmm <- _TotalWaterContentmm * 1000
-    _MaximumDumpingDepth <- as.double(0)
-    _DumpingDepth <- as.double(0)
-    _ScalingFactor <- as.double(0)
-    _DepthBottom <- as.double(0)
-    _RatioCenter <- as.double(0)
-    _DepthFactor <- as.double(0)
-    _DepthCenterLayer <- LayerThickness[1] * 1000 / 2
-    _MaximumDumpingDepth <- 1000 + (2500 * BulkDensity[1] / (BulkDensity[1] + (686 * exp(-5.63 * BulkDensity[1]))))
-    _ScalingFactor <- _TotalWaterContentmm / ((0.356 - (0.144 * BulkDensity[1])) * _SoilProfileDepthmm)
-    _DumpingDepth <- _MaximumDumpingDepth * exp(log(500 / _MaximumDumpingDepth) * ((1 - _ScalingFactor) / (1 + _ScalingFactor)) ^ 2)
-    _RatioCenter <- _DepthCenterLayer / _DumpingDepth
-    _DepthFactor <- _RatioCenter / (_RatioCenter + exp(-0.867 - (2.078 * _RatioCenter)))
-    SoilTemperatureByLayers[1] <- LagCoefficient * SoilTemperatureByLayers[1] + ((1 - LagCoefficient) * (_DepthFactor * (AirTemperatureAnnualAverage - SurfaceSoilTemperature) + SurfaceSoilTemperature))
+    TotalWaterContentmm <- TotalWaterContentmm * 1000
+    MaximumDumpingDepth <- as.double(0)
+    DumpingDepth <- as.double(0)
+    ScalingFactor <- as.double(0)
+    DepthBottom <- as.double(0)
+    RatioCenter <- as.double(0)
+    DepthFactor <- as.double(0)
+    DepthCenterLayer <- LayerThickness[1] * 1000 / 2
+    MaximumDumpingDepth <- 1000 + (2500 * BulkDensity[1] / (BulkDensity[1] + (686 * exp(-5.63 * BulkDensity[1]))))
+    ScalingFactor <- TotalWaterContentmm / ((0.356 - (0.144 * BulkDensity[1])) * SoilProfileDepthmm)
+    DumpingDepth <- MaximumDumpingDepth * exp(log(500 / MaximumDumpingDepth) * ((1 - ScalingFactor) / (1 + ScalingFactor)) ^ 2)
+    RatioCenter <- DepthCenterLayer / DumpingDepth
+    DepthFactor <- RatioCenter / (RatioCenter + exp(-0.867 - (2.078 * RatioCenter)))
+    SoilTemperatureByLayers[1] <- LagCoefficient * SoilTemperatureByLayers[1] + ((1 - LagCoefficient) * (DepthFactor * (AirTemperatureAnnualAverage - SurfaceSoilTemperature) + SurfaceSoilTemperature))
     for( i in seq(1, length(LayerThickness)-1, 1)){
-        _DepthBottom <- _DepthBottom + (LayerThickness[(i - 1)+1] * 1000)
-        _DepthCenterLayer <- _DepthBottom + (LayerThickness[i+1] * 1000 / 2)
-        _MaximumDumpingDepth <- 1000 + (2500 * BulkDensity[i+1] / (BulkDensity[i+1] + (686 * exp(-5.63 * BulkDensity[i+1]))))
-        _ScalingFactor <- _TotalWaterContentmm / ((0.356 - (0.144 * BulkDensity[i+1])) * _SoilProfileDepthmm)
-        _DumpingDepth <- _MaximumDumpingDepth * exp(log(500 / _MaximumDumpingDepth) * ((1 - _ScalingFactor) / (1 + _ScalingFactor)) ^ 2)
-        _RatioCenter <- _DepthCenterLayer / _DumpingDepth
-        _DepthFactor <- _RatioCenter / (_RatioCenter + exp(-0.867 - (2.078 * _RatioCenter)))
-        SoilTemperatureByLayers[i+1] <- LagCoefficient * SoilTemperatureByLayers[i+1] + ((1 - LagCoefficient) * (_DepthFactor * (AirTemperatureAnnualAverage - SurfaceSoilTemperature) + SurfaceSoilTemperature))
+        DepthBottom <- DepthBottom + (LayerThickness[(i - 1)+1] * 1000)
+        DepthCenterLayer <- DepthBottom + (LayerThickness[i+1] * 1000 / 2)
+        MaximumDumpingDepth <- 1000 + (2500 * BulkDensity[i+1] / (BulkDensity[i+1] + (686 * exp(-5.63 * BulkDensity[i+1]))))
+        ScalingFactor <- TotalWaterContentmm / ((0.356 - (0.144 * BulkDensity[i+1])) * SoilProfileDepthmm)
+        DumpingDepth <- MaximumDumpingDepth * exp(log(500 / MaximumDumpingDepth) * ((1 - ScalingFactor) / (1 + ScalingFactor)) ^ 2)
+        RatioCenter <- DepthCenterLayer / DumpingDepth
+        DepthFactor <- RatioCenter / (RatioCenter + exp(-0.867 - (2.078 * RatioCenter)))
+        SoilTemperatureByLayers[i+1] <- LagCoefficient * SoilTemperatureByLayers[i+1] + ((1 - LagCoefficient) * (DepthFactor * (AirTemperatureAnnualAverage - SurfaceSoilTemperature) + SurfaceSoilTemperature))
     }
-    return (list('SoilTemperatureByLayers' = SoilTemperatureByLayers))
+    #return (list('SoilTemperatureByLayers' = SoilTemperatureByLayers))
+    return (SoilTemperatureByLayers)
 }
