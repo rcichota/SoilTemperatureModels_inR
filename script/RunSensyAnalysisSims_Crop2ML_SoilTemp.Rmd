@@ -27,6 +27,9 @@ library(ggplot2)
 # load the BioMA-Parton component
 source(here("Crop2ML", "BiomaSurfacePartonSoilSWATC", "SurfacePartonSoilSWATCComponent.r"))
 
+# load the BioMA-SWAT component
+source(here("Crop2ML", "BiomaSurfaceSWATSoilSWATC", "SurfaceSWATSoilSWATCComponent.r"))
+
 # load DSSAT-EPIC component
 source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 
@@ -65,7 +68,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[2]
+temperatureModel <- modelsToRun[3]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -402,9 +405,6 @@ This function takes the set of parameters and inputs needed to run the Parton so
 
 ```{r runSimulation BioMA-Parton model}
 
-soilWaterData <- soilWaterToRun
-biomassData <- biomassToRun
-
 run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -418,11 +418,11 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   # set model initialisation
   initialState <- init_soiltemperatureswat(
     VolumetricWaterContent=soilWaterData,
-    LayerThickness=soilLayerData$THICK/1000.0,
+    LayerThickness=soilLayerData$THICK/100.0,
     LagCoefficient=0.8,
     AirTemperatureAnnualAverage=siteData$TAV,
     BulkDensity=soilLayerData$SLBDM,
-    SoilProfileDepth=sum(soilLayerData$THICK)/1000.0)
+    SoilProfileDepth=sum(soilLayerData$THICK)/100.0)
 
   # collect some variables that are needed on CalculateModel
   previousST <- initialState$SoilTemperatureByLayers
@@ -431,7 +431,7 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_surfacepartonsoilswatc(
-      DayLength=weatherData$DAYLD [day],
+      DayLength=weatherData$DAYLD[day],
       GlobalSolarRadiation=weatherData$SRAD[day],
       AboveGroundBiomass=biomassData,
       AirTemperatureMinimum=weatherData$TMIN[day],
@@ -475,6 +475,9 @@ This function takes the set of parameters and inputs needed to run the SWAT soil
 
 ```{r runSimulation BioMA-SWAT model}
 
+soilWaterData <- soilWaterToRun
+biomassData <- biomassToRun
+
 run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -487,12 +490,12 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   # set model initialisation
   initialState <- init_soiltemperatureswat(
-    VolumetricWaterContent=currentSWC,
-    LayerThickness=soilLayerData$Thickness/1000.0,
+    VolumetricWaterContent=soilWaterData,
+    LayerThickness=soilLayerData$THICK/100.0,
     LagCoefficient=0.8,
     AirTemperatureAnnualAverage=siteData$TAV,
-    BulkDensity=soilLayerData$BD,
-    SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0)
+    BulkDensity=soilLayerData$SLBDM,
+    SoilProfileDepth=sum(soilLayerData$THICK)/100.0)
 
   # collect some variables that are needed on CalculateModel
   previousST <- initialState$SoilTemperatureByLayers
@@ -501,18 +504,19 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_surfaceswatsoilswatc(
-      AirTemperatureMaximum=weatherData$maxt[day],
-      AirTemperatureMinimum=weatherData$mint[day],
-      GlobalSolarRadiation=weatherData$radn[day],
-      AboveGroundBiomass=coverBiomass,
-      WaterEquivalentOfSnowPack,
-      Albedo=siteData$SAlbedo,
-      BulkDensity=soilLayerData$BD,
+      AirTemperatureMaximum=weatherData$TMAX[day],
+      AirTemperatureMinimum=weatherData$TMIN[day],
+      GlobalSolarRadiation=weatherData$SRAD[day],
+      AboveGroundBiomass=biomassData,
+      WaterEquivalentOfSnowPack=weatherData$SNOW[day],
+      Albedo=soilGeneralData$SALB,
+      BulkDensity=soilLayerData$SLBDM,
       AirTemperatureAnnualAverage=siteData$TAV,
-      VolumetricWaterContent=currentSWC,
-      SoilProfileDepth=sum(soilLayerData$Thickness)/1000.0,
+      VolumetricWaterContent=soilWaterData,
+      SoilProfileDepth=sum(soilLayerData$THICK)/100.0,
       LagCoefficient=0.8,
-      LayerThickness=soilLayerData$Thickness/1000.0)
+      LayerThickness=soilLayerData$THICK/100.0,
+      preSoilTemperatureByLayers=previousST)
 
     # collect some variables that are needed for next iteration
     previousST <- onProcessState$SoilTemperatureByLayers

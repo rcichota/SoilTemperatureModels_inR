@@ -17,7 +17,8 @@ model_surfaceswatsoilswatc <- function (AirTemperatureMaximum,
          VolumetricWaterContent,
          SoilProfileDepth,
          LagCoefficient,
-         LayerThickness){
+         LayerThickness,
+         preSoilTemperatureByLayers){
     #'- Name: SurfaceSWATSoilSWATC -Version: 001, -Time step: 1
     #'- Description:
     #'            * Title: SurfaceSWATSoilSWATC model
@@ -154,7 +155,8 @@ model_surfaceswatsoilswatc <- function (AirTemperatureMaximum,
     #'                          ** max : 60
     #'                          ** min : -60
     #'                          ** unit : degC
-    SoilTemperatureByLayers<- vector()
+    #SoilTemperatureByLayers<- vector()
+    SoilTemperatureByLayers<- preSoilTemperatureByLayers
     SurfaceSoilTemperature <- model_surfacetemperatureswat(GlobalSolarRadiation, SoilTemperatureByLayers, AirTemperatureMaximum, AirTemperatureMinimum, Albedo, AboveGroundBiomass, WaterEquivalentOfSnowPack)
     SoilTemperatureByLayers <- model_soiltemperatureswat(VolumetricWaterContent, SurfaceSoilTemperature, LayerThickness, LagCoefficient, SoilTemperatureByLayers, AirTemperatureAnnualAverage, BulkDensity, SoilProfileDepth)
     return (list ("SurfaceSoilTemperature" = SurfaceSoilTemperature,"SoilTemperatureByLayers" = SoilTemperatureByLayers))
