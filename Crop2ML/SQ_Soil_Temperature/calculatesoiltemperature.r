@@ -7,7 +7,7 @@ init_calculatesoiltemperature <- function (meanTAir,
          maxTAir){
     deepLayerT <- 20.0
     deepLayerT <- meanAnnualAirTemp
-    return( deepLayerT)
+    return(list("deepLayerT" = deepLayerT))
 }
 
 model_calculatesoiltemperature <- function (meanTAir,

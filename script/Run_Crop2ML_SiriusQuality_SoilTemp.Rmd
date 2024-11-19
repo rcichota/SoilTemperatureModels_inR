@@ -22,7 +22,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 
-# load the BioMA-SWAT component
+# load the SiriusQuality component
 source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
 
 ```
@@ -84,7 +84,7 @@ initialState <- init_calculatesoiltemperature(
   maxTAir=weatherData$maxt[firstDay])
 
 # collect some variables that are needed for next iteration
-previousDeepLayerT <- initialState
+previousDeepLayerT <- initialState$deepLayerT
 
 # run model between two days (dates in weather file)
 for (day in firstDay:lastDay)

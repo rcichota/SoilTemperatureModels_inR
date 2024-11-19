@@ -36,6 +36,9 @@ source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 # load the DSSAT native component
 source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
 
+# load the SiriusQuality component
+source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
+
 ```
 
 ## Experiment setup
@@ -68,7 +71,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[3]
+temperatureModel <- modelsToRun[8]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -475,9 +478,6 @@ This function takes the set of parameters and inputs needed to run the SWAT soil
 
 ```{r runSimulation BioMA-SWAT model}
 
-soilWaterData <- soilWaterToRun
-biomassData <- biomassToRun
-
 run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -529,12 +529,12 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
     simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SurfaceSoilTemperature, 6), round(onProcessState$SoilTemperatureByLayers, 6)))
-    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
     simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
   }
   
   # prepare the output table
-  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)
@@ -704,6 +704,9 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation SiriusQuality model}
 
+soilWaterData <- soilWaterToRun
+biomassData <- biomassToRun
+
 run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
 {
   # initialise a series of variable to collect output of interest
@@ -722,30 +725,30 @@ run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   # set model initialisation
   initialState <- init_calculatesoiltemperature(
-    meanTAir=(weatherData$mint[firstDay]+weatherData$maxt[firstDay])/2,
-    minTAir=weatherData$mint[firstDay],
+    meanTAir=mean(weatherData$TMIN[1]+weatherData$TMAX[1]),
+    minTAir=weatherData$TMIN[1],
     lambda_=lambda,
     meanAnnualAirTemp=siteData$TAV,
-    maxTAir=weatherData$maxt[firstDay])
+    maxTAir=weatherData$TMAX[1])
   
   # collect some variables that are needed on CalculateModel
-  previousDeepLayerT <- initialState
+  previousDeepLayerT <- initialState$deepLayerT
 
   # run model for the duration of the weather file
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_soiltemperature(
-      meanTAir=(weatherData$mint[day]+weatherData$maxt[day])/2,
-      minTAir=weatherData$mint[day],
+      meanTAir=(weatherData$TMIN[day]+weatherData$TMAX[day])/2,
+      minTAir=weatherData$TMIN[day],
       lambda_=lambda,
       meanAnnualAirTemp=siteData$TAV,
       deepLayerT=previousDeepLayerT,
       heatFlux=0.0,  # to check
-      maxTAir=weatherData$maxt[day],
+      maxTAir=weatherData$TMAX[day],
       b=paramB,
       c=paramC,
       a=paramA,
-      dayLength=weatherData$DayLength[day])
+      dayLength=weatherData$DAYLD[day])
 
     # collect some variables that are needed for next iteration
     previousDeepLayerT <- onProcessState$deepLayerT
@@ -757,13 +760,13 @@ run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
-    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round((onProcessState$minTSoil=onProcessState$maxTSoil)/2, 6), rep(round(onProcessState$deepLayerT, 6),length(soilLayerData$Thickness))))
-    simulatedSoilTempMin <- c(simulatedSoilTempMin, c(round(onProcessState$minTSoil,6), rep("na", nrow(soilLayerData))))
-    simulatedSoilTempMax <- c(simulatedSoilTempMax, c(round(onProcessState$minTSoil,6),rep("na", nrow(soilLayerData))))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c("na", round((onProcessState$minTSoil + onProcessState$maxTSoil)/2, 6), rep(round(onProcessState$deepLayerT, 6), nrow(soilLayerData)-1)))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, c("na",round(onProcessState$maxTSoil,6),rep("na", nrow(soilLayerData)-1)))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, c("na",round(onProcessState$minTSoil,6), rep("na", nrow(soilLayerData)-1)))
   }
   
   # prepare the output table
-  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)
