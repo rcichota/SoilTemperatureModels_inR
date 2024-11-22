@@ -98,7 +98,7 @@ snow_init = init_snowcovercalculator(
 
 stmp_init = init_stmpsimcalculator(
   cSoilLayerDepth=soilLayerData$Thickness/1000.0,
-  cFirstDayMeanTemp=mean(weatherData$mint[1],weatherData$maxt[1]),
+  cFirstDayMeanTemp=siteData$TAV,
   cAVT=siteData$TAV,
   cABD=siteData$SMeanBD,
   cDampingDepth=dampingDepth,
@@ -106,6 +106,8 @@ stmp_init = init_stmpsimcalculator(
   iSoilSurfaceTemperature)
 
 # collect some variables that are needed for next iteration
+baseInternalAlbedo <- snow_init$pInternalAlbedo
+baseSoilLayerDepth <- stmp_init$pSoilLayerDepth
 previous_SnowWaterContent = snow_init$SnowWaterContent
 previous_SoilSurfaceTemperature = snow_init$SoilSurfaceTemperature
 previous_AgeOfSnow = snow_init$AgeOfSnow
@@ -115,7 +117,7 @@ previous_rSoilTempArrayRate = stmp_init$rSoilTempArrayRate
 # run model between two days (dates in weather file)
 for (day in firstDay:lastDay)
 {
-  onProcessState <- model_soiltemperature (
+  onProcessState <- model_soiltemperature(
     cCarbonContent=soilLayerData$OC[1],
     cAlbedo=siteData$SAlbedo,
     iAirTemperatureMax = weatherData$maxt[day],
@@ -127,7 +129,7 @@ for (day in firstDay:lastDay)
     iLeafAreaIndex=leafAreaIndex,
     SoilTempArray=previous_SoilTempArray,
     cSoilLayerDepth=soilLayerData$Thickness/1000.0,
-    cFirstDayMeanTemp=mean(weatherData$mint,weatherData$maxt),
+    cFirstDayMeanTemp=siteData$TAV,
     cAverageGroundTemperature=siteData$TAV,
     cAverageBulkDensity=siteData$SMeanBD,
     cDampingDepth=dampingDepth,
@@ -137,12 +139,13 @@ for (day in firstDay:lastDay)
     SoilSurfaceTemperature=previous_SoilSurfaceTemperature,
     AgeOfSnow=previous_AgeOfSnow,
     rSoilTempArrayRate=previous_rSoilTempArrayRate,
-    pSoilLayerDepth=stmp_init$pSoilLayerDepth,
+    pSoilLayerDepth=baseSoilLayerDepth,
     cInitialAgeOfSnow=0,
     cInitialSnowWaterContent=0,
     cSnowIsolationFactorA=snowIsolationFactorA,
     cSnowIsolationFactorB=snowIsolationFactorB)
 
+  # collect some variables that are needed for next iteration
   previous_SoilSurfaceTemperature <- onProcessState$SoilSurfaceTemperature
   previous_SnowWaterContent <- onProcessState$SnowWaterContent
   previous_AgeOfSnow <- onProcessState$AgeOfSnow
@@ -152,7 +155,7 @@ for (day in firstDay:lastDay)
   # collect output data
   simulatedDate <- c(simulatedDate, rep(weatherData$date[day], nrow(soilLayerData) + 1))
   simulatedDepth <- c(simulatedDepth, c(0.0, (soilLayerData$LayerTop+soilLayerData$LayerBot)/2))
-  simulatedTemperature <- c(simulatedTemperature, c(round(onProcessState$SoilSurfaceTemperature, 6)))
+  simulatedTemperature <- c(simulatedTemperature, c(round(onProcessState$SoilSurfaceTemperature, 6), round(onProcessState$SoilTempArray[1:nrow(soilLayerData)], 6)))
 }
 
 # prepare the output table

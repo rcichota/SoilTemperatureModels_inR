@@ -39,6 +39,9 @@ source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
 # load the MONICA component
 source(here("Crop2ML", "Monica_SoilTemp", "SoilTemperatureCompComponent.r"))
 
+# load the SIMPLACE component
+source(here("Crop2ML","Simplace_Soil_Temperature", "SoilTemperatureComponent.r"))
+
 # load the SiriusQuality component
 source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
 
@@ -80,7 +83,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[6]
+temperatureModel <- modelsToRun[7]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -134,7 +137,7 @@ run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID,
   # set the value of biomass for the LAI treatment being simulated
   laisToRun <- c(0, 2, 7)
   biomassesToRun <- c(0.0, 1800.0, 10500.0)
-  biomassCoverToRun <- list("LAI"=laiID, "biomassCover"=switch(which(laisToRun==laiID), biomassesToRun))
+  biomassCoverToRun <- list("LAI"=laiID, "biomassCover"=biomassesToRun[which(laisToRun==laiID)])
 
   # run one simulation
   if(temperatureModel=="APC")
@@ -559,9 +562,6 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation MONICA model}
 
-soilWaterData <- soilWaterToRun
-biomassCoverData <- biomassCoverToRun
-
 run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
@@ -700,6 +700,122 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
 
   # prepare the output table
   outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMin, simulatedSoilTempMax)
+  colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
+
+  return(outputData)
+}
+
+```
+
+
+## Run the SimPlace-Apex model
+
+This function takes the set of parameters and inputs needed to run the soil temperature model from SimPlace, sets it appropriately and then collects the outputs and formats it in the require format for the sensitivity analysis exercise.
+
+```{r runSimulation SimPlace-Apex model}
+
+run_SACmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
+{
+  # initialise a series of variable to collect output of interest
+  simulatedDate <- c()
+  simulatedDepthTop <- c()
+  simulatedDepthBtm <- c()
+  simulatedSoilTempAve <- c()
+  simulatedSoilTempMin <- c()
+  simulatedSoilTempMax <- c()
+
+  # define some variables specific to a given run/simulation
+  dampingDepth <- 6.0          # damping depth of soil
+  snowIsolationFactorA = 2.3   # static part of the snow isolation index
+  snowIsolationFactorB = 0.22  # dynamic part of the snow isolation index
+
+  # set model initialisation
+  initialStateSnow = init_snowcovercalculator(
+    cCarbonContent=soilLayerData$SLOC[1],
+    cInitialAgeOfSnow=0,
+    cInitialSnowWaterContent=0,
+    Albedo=soilGeneralData$SALB,
+    cSnowIsolationFactorA=snowIsolationFactorA,
+    cSnowIsolationFactorB=snowIsolationFactorB,
+    iTempMax=weatherData$TMAX[1],
+    iTempMin=weatherData$TMIN[1],
+    iRadiation=weatherData$SRAD[1],
+    iRAIN=weatherData$RAIN[1],
+    iCropResidues=biomassCoverData$biomassCover,
+    iPotentialSoilEvaporation=weatherData$ESP[1],
+    iLeafAreaIndex=biomassCoverData$LAI,
+    iSoilTempArray=rep(siteData$TAV, nrow(soilLayerData)))
+
+  initialState = init_stmpsimcalculator(
+    cSoilLayerDepth=soilLayerData$SLLB/100.0,
+    cFirstDayMeanTemp=siteData$TAV,
+    cAVT=siteData$TAV,
+    cABD=soilGeneralData$SABDM,
+    cDampingDepth=dampingDepth,
+    iSoilWaterContent=sum(soilWaterData*soilLayerData$THICK*10.0),
+    iSoilSurfaceTemperature)
+
+  # collect some variables that are needed on CalculateModel
+  baseInternalAlbedo <- initialStateSnow$pInternalAlbedo
+  baseSoilLayerDepth <- initialState$pSoilLayerDepth
+  previous_SnowWaterContent <- initialStateSnow$SnowWaterContent
+  previous_SoilSurfaceTemperature<- initialStateSnow$SoilSurfaceTemperature
+  previous_AgeOfSnow <- initialStateSnow$AgeOfSnow
+  previous_SoilTempArray <- initialState$SoilTempArray
+  previous_rSoilTempArrayRate <- initialState$rSoilTempArrayRate
+
+  # run model for the duration of the weather file
+  for (day in 1:nrow(weatherData))
+  {
+    onProcessState <- model_soiltemperature(
+      cCarbonContent=soilLayerData$SLOC[1],
+      cAlbedo=soilGeneralData$SALB,
+      iAirTemperatureMax=weatherData$TMAX[day],
+      iAirTemperatureMin=weatherData$TMIN[day],
+      iGlobalSolarRadiation=weatherData$SRAD[day],
+      iRAIN=0.0,
+      iCropResidues=0.0,
+      iPotentialSoilEvaporation=weatherData$ESP[day],
+      iLeafAreaIndex=biomassCoverData$LAI,
+      SoilTempArray=previous_SoilTempArray,
+      cSoilLayerDepth=soilLayerData$SLLB/100.0,
+      cFirstDayMeanTemp=siteData$TAV,
+      cAverageGroundTemperature=siteData$TAV,
+      cAverageBulkDensity=soilGeneralData$SABDM,
+      cDampingDepth=dampingDepth,
+      iSoilWaterContent=sum(soilWaterData*soilLayerData$THICK*10.0),
+      pInternalAlbedo=baseInternalAlbedo,
+      SnowWaterContent=previous_SnowWaterContent,
+      SoilSurfaceTemperature=previous_SoilSurfaceTemperature,
+      AgeOfSnow=previous_AgeOfSnow,
+      rSoilTempArrayRate=previous_rSoilTempArrayRate,
+      pSoilLayerDepth=baseSoilLayerDepth,
+      cInitialAgeOfSnow=0,
+      cInitialSnowWaterContent=0,
+      cSnowIsolationFactorA=snowIsolationFactorA,
+      cSnowIsolationFactorB=snowIsolationFactorB)
+
+    # collect some variables that are needed for next iteration
+    previous_SoilSurfaceTemperature <- onProcessState$SoilSurfaceTemperature
+    previous_SnowWaterContent <- onProcessState$SnowWaterContent
+    previous_AgeOfSnow <- onProcessState$AgeOfSnow
+    previous_SoilTempArray <- onProcessState$SoilTempArray
+    previous_rSoilTempArrayRate <- onProcessState$rSoilTempArrayRate
+
+    # set date in correct format
+    todaysDate <- as.Date(as.numeric(substr(weatherData$DATE[day], 5, 7)) - 1, as.Date(paste0(substr(weatherData$DATE[day], 1, 4), "-01-01")))
+
+    # collect output data
+    simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
+    simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
+    simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
+    simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$SoilSurfaceTemperature, 6), round(onProcessState$SoilTempArray[1:nrow(soilLayerData)], 6)))
+    simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
+    simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
+  }
+  
+  # prepare the output table
+  outputData <- data.frame(simulatedDate, simulatedDepthTop, simulatedDepthBtm, simulatedSoilTempAve, simulatedSoilTempMax, simulatedSoilTempMin)
   colnames(outputData) <- c("DATE", "SLLT", "SLLB", "TSLD", "TSLX", "TSLN")
 
   return(outputData)
