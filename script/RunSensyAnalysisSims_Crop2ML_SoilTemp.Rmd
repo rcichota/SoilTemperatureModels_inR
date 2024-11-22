@@ -36,11 +36,17 @@ source(here("Crop2ML", "DSSAT_EPICST_standalone", "STEMP_EPIC_Component.r"))
 # load the DSSAT native component
 source(here("Crop2ML", "DSSAT_ST_standalone", "STEMP_Component.r"))
 
+# load the MONICA component
+source(here("Crop2ML", "Monica_SoilTemp", "SoilTemperatureCompComponent.r"))
+
 # load the SiriusQuality component
 source(here("Crop2ML", "SQ_Soil_Temperature", "SoilTemperatureComponent.r"))
 
 # load the STICS component
 source(here("Crop2ML", "Stics_soil_temperature", "soil_tempComponent.r"))
+
+# load auxiliary functions
+source(here("auxiliary", "MapLayerValues.R"))
 
 ```
 
@@ -74,7 +80,7 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[9]
+temperatureModel <- modelsToRun[6]
 testToRun <- "One"
 
 # define a selection of factors defining one experimental run
@@ -127,44 +133,45 @@ run_SensitivityScenario <- function(temperatureModel, locationID, soilID, laiID,
 
   # set the value of biomass for the LAI treatment being simulated
   laisToRun <- c(0, 2, 7)
-  biomassToRun <- switch(which(laisToRun==laiID), 0.0, 1800.0, 10500.0)
+  biomassesToRun <- c(0.0, 1800.0, 10500.0)
+  biomassCoverToRun <- list("LAI"=laiID, "biomassCover"=switch(which(laisToRun==laiID), biomassesToRun))
 
   # run one simulation
   if(temperatureModel=="APC")
   {
-    outputData <- run_APCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_APCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="PSC")
   {
-    outputData <- run_PSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_PSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="SWC")
   {
-    outputData <- run_SWCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_SWCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="DEC")
   {
-    outputData <- run_DECmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_DECmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="DSC")
   {
-    outputData <- run_DSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_DSCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="MOC")
   {
-    outputData <- run_MOCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_MOCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="SAC")
   {
-    outputData <- run_SACmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_SACmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="SQC")
   {
-    outputData <- run_SQCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_SQCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else
   if(temperatureModel=="STC")
   {
-    outputData <- run_STCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassToRun)
+    outputData <- run_STCmodel(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterToRun, biomassCoverToRun)
   } else {
     cat("Model ", temperatureModel, " has not been implemented yet")
   }
@@ -184,7 +191,7 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation DSSAT-Epic model}
 
-run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -215,7 +222,7 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     TMIN=weatherData$TMIN[1],
     TAV=siteData$TAV,
     DEPIR=0,
-    BIOMAS=biomassData,
+    BIOMAS=biomassCoverData$biomassCover,
     MULCHMASS=0,
     SNOW=weatherData$SNOW[1])
 
@@ -241,7 +248,7 @@ run_DECmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
       TMIN=weatherData$TMIN[day],
       WetDay=previousWetDay,
       DUL=soilLayerData$SLDUL,
-      BIOMAS=biomassData,
+      BIOMAS=biomassCoverData$biomassCover,
       DS=soilLayerData$SLLB,
       TAMP=siteData$TAMP,
       DLAYR =soilLayerData$THICK,
@@ -302,7 +309,7 @@ This function takes the set of parameters and inputs needed to run the native so
 
 ```{r runSimulation DSSAT native model}
 
-run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_DSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -411,7 +418,7 @@ This function takes the set of parameters and inputs needed to run the Parton so
 
 ```{r runSimulation BioMA-Parton model}
 
-run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -439,7 +446,7 @@ run_PSCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     onProcessState <- model_surfacepartonsoilswatc(
       DayLength=weatherData$DAYLD[day],
       GlobalSolarRadiation=weatherData$SRAD[day],
-      AboveGroundBiomass=biomassData,
+      AboveGroundBiomass=biomassCoverData$biomassCover,
       AirTemperatureMinimum=weatherData$TMIN[day],
       AirTemperatureMaximum=weatherData$TMAX[day],
       LayerThickness=soilLayerData$THICK/100.0,
@@ -481,7 +488,7 @@ This function takes the set of parameters and inputs needed to run the SWAT soil
 
 ```{r runSimulation BioMA-SWAT model}
 
-run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -510,7 +517,7 @@ run_SWCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
       AirTemperatureMaximum=weatherData$TMAX[day],
       AirTemperatureMinimum=weatherData$TMIN[day],
       GlobalSolarRadiation=weatherData$SRAD[day],
-      AboveGroundBiomass=biomassData,
+      AboveGroundBiomass=biomassCoverData$biomassCover,
       WaterEquivalentOfSnowPack=weatherData$SNOW[day],
       Albedo=soilGeneralData$SALB,
       BulkDensity=soilLayerData$SLBDM,
@@ -552,7 +559,10 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation MONICA model}
 
-run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+soilWaterData <- soilWaterToRun
+biomassCoverData <- biomassCoverToRun
+
+run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -576,16 +586,16 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   time_step <- 1.0         # time-step for calculations (-?)
   iniSurfaceTemp <-  10.0  # initial surface temperature
   dampingFactr <- 0.8      # a factor ??
-  currentLAI <- 0.0        # leaf area index, for computing cover
+  currentLAI <- biomassCoverData$LAI
   soilCover <- 1.0 - exp(-0.5 * currentLAI)
   hasSnow <- FALSE         # flag whether there is snow in the ground
 
   # re-map soil profile to MONICA requirements
-  monicaSoilThickness <- rep(50.0, 42)
-  currentSWC <- MapConcentrationByLayer(currentSWC, soilLayerData$Thickness, monicaSoilThickness)
-  monicaBD <- MapConcentrationByLayer(soilLayerData$BD*1000.0, soilLayerData$Thickness, monicaSoilThickness)
-  monicaSAT <- MapConcentrationByLayer(soilLayerData$SAT, soilLayerData$Thickness, monicaSoilThickness)
-  monicaOM <- MapConcentrationByLayer(soilLayerData$OC/0.57*100.0, soilLayerData$Thickness, monicaSoilThickness)
+  monicaSoilThickness <- rep(5.0, 42)
+  currentSWC <- MapConcentrationByLayer(soilWaterData, soilLayerData$THICK, monicaSoilThickness)
+  monicaBD <- MapConcentrationByLayer(soilLayerData$SLBDM*1000.0, soilLayerData$THICK, monicaSoilThickness)
+  monicaSAT <- MapConcentrationByLayer(soilLayerData$SLSAT, soilLayerData$THICK, monicaSoilThickness)
+  monicaOM <- MapConcentrationByLayer(soilLayerData$SLOC/(0.57*100.0), soilLayerData$THICK, monicaSoilThickness)
   monicaSoilThickness <- rep(0.05, 44)  # set values in m, add two extra layers, kept empty
 
   # set model initialisation
@@ -612,15 +622,12 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     soilOrganicMatter=monicaOM)
 
   # collect some variables that are needed on CalculateModel
-  base_V <- initialState$V
   base_B <- initialState$B
   base_volumeMatrix <- initialState$volumeMatrix
   base_volumeMatrixOld <- initialState$volumeMatrixOld
   base_matrixPrimaryDiagonal <- initialState$matrixPrimaryDiagonal
   base_matrixSecondaryDiagonal <- initialState$matrixSecondaryDiagonal
-  base_heatConductivity <- initialState$heatConductivity
   base_heatConductivityMean <- initialState$heatConductivityMean
-  base_heatCapacity <- initialState$heatCapacity
   base_solution <- initialState$solution
   base_matrixDiagonal <- initialState$matrixDiagonal
   base_matrixLowerTriangle <- initialState$matrixLowerTriangle
@@ -632,35 +639,35 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
   for (day in 1:nrow(weatherData))
   {
     onProcessState <- model_soiltemperaturecomp(
-      tmin=weatherData$mint[day],
-      tmax=weatherData$maxt[day],
-      globrad=weatherData$radn[day],
+      tmin=weatherData$TMIN[day],
+      tmax=weatherData$TMAX[day],
+      globrad=weatherData$SRAD[day],
       dampingFactor=dampingFactr,
       soilCoverage=soilCover,
       soilSurfaceTemperatureBelowSnow=0,
       hasSnowCover=hasSnow,
-      timeStep=time_step,
-      soilMoistureConst=currentSWC,
-      baseTemp=baseTemper,
+#      timeStep=time_step,
+#      soilMoistureConst=currentSWC,
+#      baseTemp=baseTemper,
       initialSurfaceTemp=previousSurfaceTemperature,
-      densityAir=airDensity,
-      specificHeatCapacityAir=airSpecHeat,
-      densityHumus=humusDensity,
-      specificHeatCapacityHumus=humusSpecHeat,
-      densityWater=waterDensity,
-      specificHeatCapacityWater=waterSpecHeat,
-      quartzRawDensity=quartzDensity,
-      specificHeatCapacityQuartz=quartzSpecHeat,
-      nTau=n_Tau,
+#      densityAir=airDensity,
+#      specificHeatCapacityAir=airSpecHeat,
+#      densityHumus=humusDensity,
+#      specificHeatCapacityHumus=humusSpecHeat,
+#      densityWater=waterDensity,
+#      specificHeatCapacityWater=waterSpecHeat,
+#      quartzRawDensity=quartzDensity,
+#      specificHeatCapacityQuartz=quartzSpecHeat,
+#      nTau=n_Tau,
       noOfTempLayers=length(monicaSoilThickness),
       noOfTempLayersPlus1=length(monicaSoilThickness)+1,
       noOfSoilLayers=length(monicaSoilThickness)-2,
       layerThickness=monicaSoilThickness,
-      soilBulkDensity=monicaBD,
-      saturation=monicaSAT,
-      soilOrganicMatter=monicaOM,
+#      soilBulkDensity=monicaBD,
+#      saturation=monicaSAT,
+#      soilOrganicMatter=monicaOM,
       initialSoilTemperature=previousSoilTemperature,
-      V=base_V,
+#      V=base_V,
       B=base_B,
       volumeMatrix=base_volumeMatrix,
       volumeMatrixOld=base_volumeMatrixOld,
@@ -685,7 +692,7 @@ run_MOCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, 
     simulatedDate <- c(simulatedDate, rep(as.character(todaysDate), nrow(soilLayerData) + 1))
     simulatedDepthTop <- c(simulatedDepthTop, c(0.0, soilLayerData$SLLT))
     simulatedDepthBtm <- c(simulatedDepthBtm, c(0.0, soilLayerData$SLLB))
-    unMonicaSoilTemperature <- MapConcentrationByLayer(onProcessState$soilTemperature, monicaSoilThickness,soilLayerData$Thickness)
+    unMonicaSoilTemperature <- MapConcentrationByLayer(onProcessState$soilTemperature, monicaSoilThickness,soilLayerData$THICK/100.0)
     simulatedSoilTempAve <- c(simulatedSoilTempAve, c(round(onProcessState$soilSurfaceTemperature, 6), round(unMonicaSoilTemperature, 6)))
     simulatedSoilTempMin <- c(simulatedSoilTempMin, rep("na", nrow(soilLayerData) + 1))
     simulatedSoilTempMax <- c(simulatedSoilTempMax, rep("na", nrow(soilLayerData) + 1))
@@ -707,7 +714,7 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation SiriusQuality model}
 
-run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_SQCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()
@@ -781,7 +788,7 @@ This function takes the set of parameters and inputs needed to run the soil temp
 
 ```{r runSimulation STICS model}
 
-run_STCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassData)
+run_STCmodel <- function(siteData, soilGeneralData, soilLayerData, weatherData, soilWaterData, biomassCoverData)
 {
   # initialise a series of variable to collect output of interest
   simulatedDate <- c()

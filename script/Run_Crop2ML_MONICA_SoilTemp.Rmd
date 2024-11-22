@@ -25,10 +25,10 @@ library(lubridate)
 library(ggplot2)
 
 # load the MONICA component
-source(here("Crop2ML", "SoilTemperatureCompComponent.r"))
+source(here("Crop2ML", "Monica_SoilTemp", "SoilTemperatureCompComponent.r"))
 
 # load auxiliary functions
-source(here("auxiliary", "Monica_SoilTemp", "MapLayerValues.R"))
+source(here("auxiliary", "MapLayerValues.R"))
 
 ```
 
@@ -127,15 +127,12 @@ initialState <- init_soiltemperature(
   soilOrganicMatter=monicaOM)
 
 # collect some variables that are needed for next iteration
-base_V <- initialState$V
 base_B <- initialState$B
 base_volumeMatrix <- initialState$volumeMatrix
 base_volumeMatrixOld <- initialState$volumeMatrixOld
 base_matrixPrimaryDiagonal <- initialState$matrixPrimaryDiagonal
 base_matrixSecondaryDiagonal <- initialState$matrixSecondaryDiagonal
-base_heatConductivity <- initialState$heatConductivity
 base_heatConductivityMean <- initialState$heatConductivityMean
-base_heatCapacity <- initialState$heatCapacity
 base_solution <- initialState$solution
 base_matrixDiagonal <- initialState$matrixDiagonal
 base_matrixLowerTriangle <- initialState$matrixLowerTriangle
@@ -154,28 +151,28 @@ for (day in firstDay:lastDay)
     soilCoverage=soilCover,
     soilSurfaceTemperatureBelowSnow=0,
     hasSnowCover=hasSnow,
-    timeStep=time_step,
-    soilMoistureConst=currentSWC,
-    baseTemp=9.5,
+#    timeStep=time_step,
+#    soilMoistureConst=currentSWC,
+#    baseTemp=9.5,
     initialSurfaceTemp=previousSurfaceTemperature,
-    densityAir=airDensity,
-    specificHeatCapacityAir=airSpecHeat,
-    densityHumus=humusDensity,
-    specificHeatCapacityHumus=humusSpecHeat,
-    densityWater=waterDensity,
-    specificHeatCapacityWater=waterSpecHeat,
-    quartzRawDensity=quartzDensity,
-    specificHeatCapacityQuartz=quartzSpecHeat,
-    nTau=n_Tau,
+#    densityAir=airDensity,
+#    specificHeatCapacityAir=airSpecHeat,
+#    densityHumus=humusDensity,
+#    specificHeatCapacityHumus=humusSpecHeat,
+#    densityWater=waterDensity,
+#    specificHeatCapacityWater=waterSpecHeat,
+#    quartzRawDensity=quartzDensity,
+#    specificHeatCapacityQuartz=quartzSpecHeat,
+#    nTau=n_Tau,
     noOfTempLayers=length(monicaSoilThickness),
     noOfTempLayersPlus1=length(monicaSoilThickness)+1,
     noOfSoilLayers=length(monicaSoilThickness)-2,
     layerThickness=monicaSoilThickness,
-    soilBulkDensity=monicaBD,
-    saturation=monicaSAT,
-    soilOrganicMatter=monicaOM,
+#    soilBulkDensity=monicaBD,
+#    saturation=monicaSAT,
+#    soilOrganicMatter=monicaOM,
     initialSoilTemperature=previousSoilTemperature,
-    V=base_V,
+#    V=base_V,
     B=base_B,
     volumeMatrix=base_volumeMatrix,
     volumeMatrixOld=base_volumeMatrixOld,
