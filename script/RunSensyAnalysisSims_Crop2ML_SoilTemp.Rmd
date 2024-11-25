@@ -83,21 +83,42 @@ laisToRun <- c(0, 2, 7)
 pawsToRun <- c(0.0, 0.25, 0.5, 0.75, 1.0)
 
 # define the temperature model to run
-temperatureModel <- modelsToRun[7]
-testToRun <- "One"
+#testToRun <- "One"
+testToRun <- "All"
 
 # define a selection of factors defining one experimental run
 if (testToRun == "One")
 {
-  locationID <- locationIDsToRun[7]
+  temperatureModel <- modelsToRun[5]
+  locationID <- locationIDsToRun[6]
   soilID <- soilsToRun[1]
   laiID <- laisToRun[3]
   pawID <- pawsToRun[3]
   run_SensitivityScenario(temperatureModel, locationID, soilID, laiID, pawID)
-} else
+} else if (testToRun == "All")
 {
-  # run all experiments (combinations of location, soil, LAI, and PAW)
-  #run_SensitivityExperiments(workingFolder, temperatureModel, locationIDsToRun, soilsToRun, laisToRun, pawsToRun)
+  # run all experiments (combinations of model, location, soil, LAI, and PAW)
+  for (iMod in 1:length(modelsToRun))
+  {
+    temperatureModel <- modelsToRun[iMod]
+    for (iLoc in 1:length(locationIDsToRun))
+    {
+      locationID <- locationIDsToRun[iLoc]
+      for (iSoil in 1:length(soilsToRun))
+      {
+        soilID <- soilsToRun[iSoil]
+        for (iLAI in 1:length(laisToRun))
+        {
+          laiID <- laisToRun[iLAI]
+          for (iPAW in 1:length(pawsToRun))
+          {
+            pawID <- pawsToRun[iPAW]
+            run_SensitivityScenario(temperatureModel, locationID, soilID, laiID, pawID)
+          }
+        }
+      }
+    }
+  }
 }
 
 ```
